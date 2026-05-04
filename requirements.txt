@@ -1,0 +1,10 @@
+asgiref==3.11.1
+bleach==6.3.0
+Django==5.2
+django-bootstrap5==26.2
+django-debug-toolbar==6.3.0
+django-filter==25.2
+django-summernote==0.8.20.0
+mysqlclient==2.2.8
+sqlparse==0.5.5
+webencodings==0.5.1
