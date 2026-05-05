@@ -10,6 +10,7 @@ class Appointment(models.Model):
     patient = models.ForeignKey('patients.Patient', on_delete=models.CASCADE, related_name='appointments')
     doctor = models.ForeignKey('staff.Doctor', on_delete=models.CASCADE, related_name='appointments')
     date = models.DateTimeField(null=False, blank=False)
+    session_number = models.PositiveIntegerField(null=True, blank=True, editable=False) # Daily queue number
     status = models.CharField(max_length=20, choices=APPOINTMENT_STATUS_CHOICES, default='confirmed')
     cost = models.FloatField(null=False, blank=False)
     notes = models.TextField(null=True, blank=True)
@@ -18,8 +19,27 @@ class Appointment(models.Model):
     created_by = models.ForeignKey('accounts.CustomUser', on_delete=models.CASCADE, related_name='appointments_created')
     updated_by = models.ForeignKey('accounts.CustomUser', on_delete=models.CASCADE, related_name='appointments_updated', null=True, blank=True)
 
+    def save(self, *args, **kwargs):
+        if not self.session_number:
+            from datetime import datetime, time
+            # Get start and end of the appointment date
+            day_start = datetime.combine(self.date.date(), time.min)
+            day_end = datetime.combine(self.date.date(), time.max)
+            
+            # Find the last appointment for this doctor on this specific day
+            last_appointment = Appointment.objects.filter(
+                doctor=self.doctor,
+                date__range=(day_start, day_end)
+            ).order_by('-session_number').first()
+            
+            if last_appointment and last_appointment.session_number:
+                self.session_number = last_appointment.session_number + 1
+            else:
+                self.session_number = 1
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f'{self.patient} || {self.doctor} || {self.date}'
+        return f'#{self.session_number} - {self.patient} || {self.doctor} || {self.date.date()}'
 
         
 class PrescriptionItem(models.Model):

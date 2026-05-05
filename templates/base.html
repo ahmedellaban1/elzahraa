@@ -1,0 +1,126 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{page_title}}</title> <!--page title must pass in every view context-->
+    
+    <!-- Bootstrap 5 RTL CSS -->
+    <link rel="stylesheet" href="{% static 'bootstrap-5.3.8-dist/css/bootstrap.rtl.min.css' %}">
+    <!-- FontAwesome 7 CSS -->
+    <link rel="stylesheet" href="{% static 'fontawesome-free-7.2.0-web/css/all.min.css' %}">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+    {% block navbar %}
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="/"><i class="fa-solid fa-hospital-user ms-2"></i>عيادات الزهراء</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto align-items-center">
+                    <li class="nav-item"><a class="nav-link" href="/#services">الخدمات</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/#doctors">الأطباء</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/#appointments">المواعيد</a></li>
+                    <li class="nav-item ms-lg-3">
+                        {% if user.is_authenticated %}
+                            <a class="btn btn-primary btn-premium px-4" href="{% url 'accounts:logout' %}">تسجيل الخروج</a>
+                        {% else %}
+                            <a class="btn btn-primary btn-premium px-4" href="{% url 'accounts:login' %}">دخول البوابة</a>
+                        {% endif %}
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    {% endblock %}
+
+    {% if messages %}
+    <div class="container mt-3 position-absolute top-0 start-50 translate-middle-x" style="z-index: 1050;">
+        {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show shadow" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% block content %}
+    {% endblock %}
+
+    {% block footer %}
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 mb-4">
+                    <a class="footer-logo" href="/">عيادات الزهراء</a>
+                    <p class="text-white-50">نمهد الطريق في التميز الطبي. نحن نقدم خدمات رعاية صحية متميزة مع التركيز على راحة المريض والتكنولوجيا المتقدمة.</p>
+                    <div class="mt-4">
+                        <a href="#" class="text-white me-3 fs-4"><i class="fa-brands fa-facebook"></i></a>
+                        <a href="#" class="text-white me-3 fs-4"><i class="fa-brands fa-instagram"></i></a>
+                        <a href="#" class="text-white fs-4"><i class="fa-brands fa-whatsapp"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 mb-4 footer-links">
+                    <h5 class="mb-4">روابط سريعة</h5>
+                    <a href="#">من نحن</a>
+                    <a href="/#services">الخدمات</a>
+                    <a href="/#doctors">الأطباء</a>
+                    <a href="/#appointments">احجز الآن</a>
+                </div>
+                <div class="col-lg-2 col-md-4 mb-4 footer-links">
+                    <h5 class="mb-4">بوابة المريض</h5>
+                    <a href="{% url 'accounts:login' %}">تسجيل الدخول</a>
+                    <a href="#">إنشاء حساب</a>
+                    <a href="#">السجلات الطبية</a>
+                    <a href="#">الوصفات الطبية</a>
+                </div>
+                <div class="col-lg-4 col-md-4 mb-4">
+                    <h5 class="mb-4">معلومات الاتصال</h5>
+                    <p class="text-white-50"><i class="fa-solid fa-location-dot ms-2"></i> 123 شارع العيادات، القاهرة، مصر</p>
+                    <p class="text-white-50"><i class="fa-solid fa-phone ms-2"></i> +20 123 456 7890</p>
+                    <p class="text-white-50"><i class="fa-solid fa-envelope ms-2"></i> info@elzahraaclinics.com</p>
+                    <p class="text-white-50"><i class="fa-solid fa-clock ms-2"></i> متاح 24/7</p>
+                </div>
+            </div>
+            <hr class="mt-5 bg-white opacity-25">
+            <div class="text-center mt-4 text-white-50">
+                <small>&copy; 2026 عيادات الزهراء. جميع الحقوق محفوظة.</small>
+            </div>
+        </div>
+    </footer>
+    {% endblock %}
+
+    <!-- Bootstrap 5 JS -->
+    <script src="{% static 'bootstrap-5.3.8-dist/js/bootstrap.bundle.min.js' %}"></script>
+    <!-- FontAwesome 7 JS -->
+    <script src="{% static 'fontawesome-free-7.2.0-web/js/all.min.js' %}"></script>
+    
+    <script>
+        window.addEventListener('scroll', function() {
+            const navbar = document.querySelector('.navbar');
+            if (navbar) {
+                if (window.scrollY > 50) {
+                    navbar.style.background = '#181818';
+                    navbar.style.boxShadow = '0 5px 20px rgba(0,0,0,0.3)';
+                } else {
+                    navbar.style.background = 'rgba(24, 24, 24, 0.8)';
+                    navbar.style.boxShadow = 'none';
+                }
+            }
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
