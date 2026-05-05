@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block body_class %}auth-body{% endblock %}
+
+{% block navbar %}{% endblock %}
+
+{% block content %}
+    <div class="auth-container">
+        <a href="/" class="auth-logo"><i class="fa-solid fa-hospital-user ms-2"></i>عيادات الزهراء</a>
+        <div class="mb-4">
+            <i class="fa-solid fa-circle-check text-success" style="font-size: 4rem;"></i>
+        </div>
+        <h4 class="fw-bold">تم تسجيل الخروج بنجاح</h4>
+        <p class="auth-subtitle">شكراً لاستخدامك بوابة عيادات الزهراء. لقد تم تسجيل خروجك بأمان من حسابك.</p>
+
+        <div class="d-grid gap-2">
+            <a href="{% url 'accounts:login' %}" class="btn btn-auth">تسجيل الدخول مرة أخرى</a>
+            <a href="/" class="btn btn-outline-primary rounded-pill fw-bold py-2 mt-2">الانتقال للرئيسية</a>
+        </div>
+
+        <p class="mt-4 text-muted small">سيتم توجيهك للرئيسية خلال <span id="timer">10</span> ثوانٍ...</p>
+    </div>
+{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block extra_js %}
+    <script>
+        let seconds = 10;
+        const timerElement = document.getElementById('timer');
+        const countdown = setInterval(() => {
+            seconds--;
+            if (timerElement) timerElement.innerText = seconds;
+            if (seconds <= 0) {
+                clearInterval(countdown);
+                window.location.href = '/';
+            }
+        }, 1000);
+    </script>
+{% endblock %}

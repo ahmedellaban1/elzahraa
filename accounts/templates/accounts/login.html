@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block body_class %}auth-body{% endblock %}
+
+{% block navbar %}{% endblock %}
+
+{% block content %}
+    <div class="auth-container">
+        <a href="/" class="auth-logo"><i class="fa-solid fa-hospital-user ms-2"></i>عيادات الزهراء</a>
+        <h4 class="fw-bold">مرحباً بك مجدداً</h4>
+        <p class="auth-subtitle">يرجى إدخال بيانات الاعتماد الخاصة بك للوصول إلى البوابة.</p>
+
+        <form action="{% url 'accounts:login' %}" method="post">
+            {% csrf_token %}
+            <div class="input-group mb-3">
+                <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                <input type="text" name="username" class="form-control form-control-with-icon" placeholder="اسم المستخدم أو البريد الإلكتروني" required>
+            </div>
+            
+            <div class="input-group mb-3">
+                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                <input type="password" name="password" class="form-control form-control-with-icon" placeholder="كلمة المرور" required>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="form-check text-start">
+                    <input type="checkbox" class="form-check-input" id="remember">
+                    <label class="form-check-label small" for="remember">تذكرني</label>
+                </div>
+                <a href="#" class="auth-link mt-0">نسيت كلمة المرور؟</a>
+            </div>
+
+            <button type="submit" class="btn btn-auth">تسجيل الدخول</button>
+        </form>
+
+        <a href="/" class="auth-link text-muted mt-4"><i class="fa-solid fa-arrow-right ms-2"></i>العودة للرئيسية</a>
+    </div>
+{% endblock %}
+
+{% block footer %}{% endblock %}
