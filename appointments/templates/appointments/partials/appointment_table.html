@@ -1,0 +1,84 @@
+{% for appointment in page_obj %}
+<tr>
+    <td class="fw-bold text-white text-nowrap">{{ appointment.session_number }}</td>
+    <td class="text-white text-nowrap">{{ appointment.room_number|default:"-" }}</td>
+    <td class="text-wrap">
+        <a href="{% url 'patients:detail' appointment.patient.id %}" class="text-vibrant-green text-decoration-none fw-bold">
+            {{ appointment.patient }}
+        </a>
+    </td>
+    <td class="text-wrap">{{ appointment.doctor }}</td>
+    <td class="text-nowrap">
+        <span class="status-badge status-{{ appointment.status }}">
+            {{ appointment.get_status_display }}
+        </span>
+    </td>
+    <td class="text-nowrap">
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-info" title="نداء المريض"
+                onclick="playVoiceSequence({{ appointment.session_number }}, {{ appointment.room_number|default:0 }})">
+                <i class="fa-solid fa-bullhorn"></i>
+            </button>
+            
+            {% if appointment.status == 'pending' %}
+            <button class="btn btn-sm btn-outline-primary" title="تأكيد الحضور" 
+                onclick="updateAppointmentStatus({{ appointment.id }}, 'confirmed')">
+                <i class="fa-solid fa-user-check"></i>
+            </button>
+            {% endif %}
+
+            {% if appointment.status == 'confirmed' %}
+            <button class="btn btn-sm btn-outline-success" title="إتمام الكشف" 
+                onclick="updateAppointmentStatus({{ appointment.id }}, 'completed')">
+                <i class="fa-solid fa-check-double"></i>
+            </button>
+            {% endif %}
+
+            {% if appointment.status != 'cancelled' and appointment.status != 'completed' %}
+            <button class="btn btn-sm btn-outline-danger" title="إلغاء" 
+                onclick="updateAppointmentStatus({{ appointment.id }}, 'cancelled')">
+                <i class="fa-solid fa-ban"></i>
+            </button>
+            {% endif %}
+        </div>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="8" class="text-center text-muted">لا يوجد مواعيد حالياً.</td>
+</tr>
+{% endfor %}
+
+{% if page_obj.has_other_pages %}
+<tr class="pagination-row">
+    <td colspan="8">
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="#" data-page="{{ page_obj.previous_page_number }}">السابق</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">السابق</span></li>
+                {% endif %}
+
+                {% for i in page_obj.paginator.page_range %}
+                {% if page_obj.number == i %}
+                <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                {% else %}
+                <li class="page-item"><a class="page-link" href="#" data-page="{{ i }}">{{ i }}</a></li>
+                {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="#" data-page="{{ page_obj.next_page_number }}">التالي</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">التالي</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </td>
+</tr>
+{% endif %}

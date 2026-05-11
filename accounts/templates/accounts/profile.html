@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="profile-card text-center">
+        <!-- Avatar Section -->
+        <div class="profile-avatar-container">
+            <div class="profile-avatar">
+                <i class="fa-solid fa-user"></i>
+            </div>
+        </div>
+
+        <!-- Header Info -->
+        <h1 class="profile-name">{{ user.get_full_name|default:user.username }}</h1>
+        <div class="profile-role-badge">
+            <i class="fa-solid fa-shield-halved me-1"></i>
+            {{ user.get_role_display }}
+        </div>
+
+        <!-- Information Grid -->
+        <div class="info-grid mt-4">
+            <div class="info-item">
+                <span class="info-label">اسم المستخدم</span>
+                <span class="info-value">{{ user.username }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">رقم الهاتف</span>
+                <span class="info-value">{{ user.phone_number }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">البريد الإلكتروني</span>
+                <span class="info-value">{{ user.email|default:"غير متوفر" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">الجنس</span>
+                <span class="info-value">{{ user.get_gender_display }}</span>
+            </div>
+            {% if user.is_doctor %}
+            <div class="info-item">
+                <span class="info-label">التخصص</span>
+                <span class="info-value">{{ user.doctor.specialization }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">نوع التعاقد</span>
+                <span class="info-value">{{ user.doctor.get_examination_type_display }}</span>
+            </div>
+            {% endif %}
+
+            {% if user.is_patient %}
+            <div class="info-item">
+                <span class="info-label">العنوان</span>
+                <span class="info-value">{{ user.patient.address|default:"غير محدد" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">تاريخ الميلاد</span>
+                <span class="info-value">{{ user.patient.birth_date|date:"j / n / Y"|default:"غير محدد" }}</span>
+            </div>
+            {% endif %}
+
+            {% if user.is_receptionist %}
+            <div class="info-item">
+                <span class="info-label">تاريخ التعيين</span>
+                <span class="info-value">{{ user.receptionist.hire_date|date:"j / n / Y" }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Edit Form -->
+        <div class="profile-edit-form">
+            <h3 class="text-white mb-4">تحديث البيانات</h3>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-white-50">الاسم الأول</label>
+                        <input type="text" name="first_name" class="form-control" value="{{ user.first_name }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-white-50">اسم العائلة</label>
+                        <input type="text" name="last_name" class="form-control" value="{{ user.last_name }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label text-white-50">رقم الهاتف</label>
+                        <input type="text" name="phone_number" class="form-control" value="{{ user.phone_number }}">
+                    </div>
+                    <div class="col-12 mt-4">
+                        <button type="submit" class="btn btn-premium px-5">حفظ التغييرات</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

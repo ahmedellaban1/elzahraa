@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link href="{% static 'vendor/flatpickr/flatpickr.min.css' %}" rel="stylesheet">
+<link href="{% static 'vendor/flatpickr/dark.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header & Filter -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-5 gap-3">
+        <div>
+            <h2 class="fw-bold text-white mb-1">لوحة التقارير المالية</h2>
+            <p class="text-muted">متابعة الإيرادات والتحليلات المالية للعيادة.</p>
+        </div>
+        
+        <form method="GET" class="d-flex align-items-center gap-3">
+            <div class="date-range-container d-flex align-items-center gap-2">
+                <i class="fa-solid fa-calendar-range text-vibrant-green"></i>
+                <input type="text" id="dateRangePicker" name="date_range" 
+                       class="form-control bg-transparent border-0 text-white text-center" 
+                       style="width: 250px;" placeholder="اختر الفترة الزمنية">
+                <input type="hidden" name="start_date" id="start_date" value="{{ start_date }}">
+                <input type="hidden" name="end_date" id="end_date" value="{{ end_date }}">
+                <input type="hidden" name="exam_type" value="{{ exam_type }}">
+            </div>
+            <button type="submit" class="btn btn-premium px-4">
+                <i class="fa-solid fa-sync-alt me-2"></i> تحديث
+            </button>
+            <button type="button" class="btn btn-outline-light px-4" onclick="window.print()">
+                <i class="fa-solid fa-print me-2"></i> طباعة
+            </button>
+        </form>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="premium-table-container p-3 d-flex align-items-center gap-3">
+                <span class="text-white fw-bold me-2"><i class="fa-solid fa-bolt-lightning text-warning me-2"></i>إجراءات سريعة:</span>
+                <a href="{% url 'patients:create_patient' %}" class="btn btn-outline-info btn-sm px-4">
+                    <i class="fa-solid fa-user-plus me-1"></i> إضافة مريض جديد
+                </a>
+                <a href="{% url 'services:define_service' %}" class="btn btn-outline-info btn-sm px-4">
+                    <i class="fa-solid fa-plus me-1"></i> تعريف خدمة جديدة
+                </a>
+                <a href="{% url 'medicines:add_medicine' %}" class="btn btn-outline-info btn-sm px-4">
+                    <i class="fa-solid fa-pills me-1"></i> إضافة دواء جديد
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Section (Exam Type) -->
+    <div class="filter-container d-flex flex-wrap align-items-center gap-3 mb-4">
+        <div class="d-flex align-items-center gap-2 me-auto">
+            <a href="?start_date={{ start_date }}&end_date={{ end_date }}&exam_type=all" 
+               class="filter-link {% if exam_type == 'all' %}active{% endif %}">الكل</a>
+            <a href="?start_date={{ start_date }}&end_date={{ end_date }}&exam_type=time_share" 
+               class="filter-link {% if exam_type == 'time_share' %}active{% endif %}">تقاسم الوقت</a>
+            <a href="?start_date={{ start_date }}&end_date={{ end_date }}&exam_type=percentage" 
+               class="filter-link {% if exam_type == 'percentage' %}active{% endif %}">نسبة مئوية</a>
+        </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="row g-4 mb-5">
+        <!-- Row 1 -->
+        <div class="col-md-4">
+            <div class="stats-card text-center">
+                <div class="stats-icon icon-revenue mx-auto">
+                    <i class="fa-solid fa-coins"></i>
+                </div>
+                <h6 class="text-muted small text-uppercase">إجمالي الإيرادات</h6>
+                <h3 class="fw-bold text-white mb-0">{{ total_revenue|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card text-center">
+                <div class="stats-icon icon-apps mx-auto">
+                    <i class="fa-solid fa-stethoscope"></i>
+                </div>
+                <h6 class="text-muted small text-uppercase">إجمالي الكشوفات</h6>
+                <h3 class="fw-bold text-white mb-0">{{ total_app_revenue|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
+                <span class="badge bg-primary mt-2">العدد: {{ app_count }}</span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card text-center">
+                <div class="stats-icon icon-clinic mx-auto" style="background: rgba(155, 89, 182, 0.15); color: #9b59b6;">
+                    <i class="fa-solid fa-microscope"></i>
+                </div>
+                <h6 class="text-muted small text-uppercase">إجمالي الخدمات</h6>
+                <h3 class="fw-bold text-white mb-0">{{ total_service_revenue|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
+                <span class="badge bg-success mt-2">العدد: {{ service_count }}</span>
+            </div>
+        </div>
+
+        <!-- Row 2 -->
+        <div class="col-md-4">
+            <div class="stats-card text-center">
+                <div class="stats-icon icon-doctor mx-auto">
+                    <i class="fa-solid fa-user-md"></i>
+                </div>
+                <h6 class="text-muted small text-uppercase">نصيب الأطباء</h6>
+                <h3 class="fw-bold text-white mb-0 text-info">{{ total_doctor_share|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card text-center">
+                <div class="stats-icon icon-clinic mx-auto">
+                    <i class="fa-solid fa-hospital"></i>
+                </div>
+                <h6 class="text-muted small text-uppercase">صافي العيادة</h6>
+                <h3 class="fw-bold text-white mb-0 text-vibrant-green">{{ total_clinic_share|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card text-center">
+                <div class="stats-icon icon-apps mx-auto" style="background: rgba(241, 196, 15, 0.15); color: #f1c40f;">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <h6 class="text-muted small text-uppercase">إجمالي العمليات</h6>
+                <h3 class="fw-bold text-white mb-0">{{ app_count|add:service_count }} <small class="fs-6 text-muted">عملية</small></h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Table -->
+    <div class="premium-table-container p-4">
+        <h4 class="mb-4 text-white">تحليل أداء الأطباء</h4>
+        <div class="table-responsive">
+            <table class="premium-table text-white">
+                <thead>
+                    <tr>
+                        <th class="text-nowrap">الطبيب</th>
+                        <th class="text-nowrap">النوع</th>
+                        <th class="text-nowrap">المواعيد</th>
+                        <th class="text-nowrap">إيراد المواعيد</th>
+                        <th class="text-nowrap">إيراد الخدمات</th>
+                        <th class="text-nowrap text-info">نصيب الطبيب</th>
+                        <th class="text-nowrap text-vibrant-green">نصيب العيادة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in doctor_data %}
+                    <tr>
+                        <td class="fw-bold">{{ item.doctor.user.get_full_name }}</td>
+                        <td><span class="badge bg-secondary opacity-75">{{ item.type }}</span></td>
+                        <td>{{ item.app_count }}</td>
+                        <td>{{ item.app_revenue|floatformat:2 }}</td>
+                        <td>{{ item.service_revenue|floatformat:2 }}</td>
+                        <td class="text-info fw-bold">{{ item.doctor_share|floatformat:2 }}</td>
+                        <td class="text-vibrant-green fw-bold">{{ item.clinic_share|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">لا توجد بيانات لهذه الفترة.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Appointments Table -->
+    <div class="premium-table-container p-4 mt-5">
+        <h4 class="mb-4 text-white">تفاصيل الكشوفات</h4>
+        <div class="table-responsive">
+            <table class="premium-table text-white">
+                <thead>
+                    <tr>
+                        <th class="text-nowrap">الطبيب</th>
+                        <th class="text-nowrap">نوع التعاقد</th>
+                        <th class="text-nowrap">عدد الكشوفات</th>
+                        <th class="text-nowrap">إجمالي الإيراد</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in appointment_details %}
+                    <tr>
+                        <td class="fw-bold">{{ app.doctor__user__first_name }} {{ app.doctor__user__last_name }}</td>
+                        <td>
+                            {% if app.doctor__examination_type == 'percentage' %}
+                                <span class="badge bg-info opacity-75">نسبة</span>
+                            {% else %}
+                                <span class="badge bg-secondary opacity-75">وقت</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ app.count }}</td>
+                        <td class="fw-bold text-vibrant-green">{{ app.total_revenue|floatformat:2 }} ج.م</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-5">لا توجد كشوفات مسجلة لهذه الفترة.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Services Table -->
+    <div class="premium-table-container p-4 mt-5">
+        <h4 class="mb-4 text-white">تفاصيل الخدمات المقدمة</h4>
+        <div class="table-responsive">
+            <table class="premium-table text-white">
+                <thead>
+                    <tr>
+                        <th class="text-nowrap">الخدمة</th>
+                        <th class="text-nowrap">الطبيب</th>
+                        <th class="text-nowrap">العدد</th>
+                        <th class="text-nowrap">إجمالي السعر</th>
+                        <th class="text-nowrap text-info">نصيب الطبيب</th>
+                        <th class="text-nowrap text-vibrant-green">نصيب العيادة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in service_details %}
+                    <tr>
+                        <td class="fw-bold">{{ item.service__name }}</td>
+                        <td>{{ item.doctor__user__first_name }} {{ item.doctor__user__last_name }}</td>
+                        <td>{{ item.count }}</td>
+                        <td>{{ item.total_price|floatformat:2 }}</td>
+                        <td class="text-info fw-bold">{{ item.total_doctor_share|floatformat:2 }}</td>
+                        <td class="text-vibrant-green fw-bold">{{ item.total_clinic_share|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-5">لا توجد خدمات مسجلة لهذه الفترة.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/flatpickr/flatpickr.min.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const startDate = "{{ start_date }}";
+        const endDate = "{{ end_date }}";
+        
+        flatpickr("#dateRangePicker", {
+            mode: "range",
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "j / n / Y",
+            defaultDate: [startDate, endDate],
+            theme: "dark",
+            onClose: function(selectedDates, dateStr, instance) {
+                if (selectedDates.length === 2) {
+                    document.getElementById('start_date').value = instance.formatDate(selectedDates[0], "Y-m-d");
+                    document.getElementById('end_date').value = instance.formatDate(selectedDates[1], "Y-m-d");
+                } else if (selectedDates.length === 1) {
+                    const singleDate = instance.formatDate(selectedDates[0], "Y-m-d");
+                    document.getElementById('start_date').value = singleDate;
+                    document.getElementById('end_date').value = singleDate;
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

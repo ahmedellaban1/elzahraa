@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-5 gap-3">
+        <div>
+            <h2 class="fw-bold text-white mb-1">خدمات العيادة</h2>
+            <p class="text-muted">قائمة بكافة الخدمات الطبية المتاحة وتفاصيل أسعارها.</p>
+        </div>
+        
+        {% if user.role == 'admin' %}
+        <div class="premium-table-container p-3 m-0 d-flex align-items-center gap-3">
+            <a href="{% url 'services:define_service' %}" class="btn btn-premium px-4">
+                <i class="fa-solid fa-plus me-1"></i> تعريف خدمة جديدة
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Services Grid -->
+    <div class="row g-4">
+        {% for service in services %}
+        <div class="col-md-4 col-lg-3">
+            <div class="premium-card p-4 d-flex flex-column h-100">
+                <div class="card-icon">
+                    <i class="fa-solid fa-hand-holding-medical"></i>
+                </div>
+                <h5 class="fw-bold text-white mb-2">{{ service.name }}</h5>
+                <div class="mb-3">
+                    {% if service.active %}
+                        <span class="badge bg-success opacity-75">نشط</span>
+                    {% else %}
+                        <span class="badge bg-danger opacity-75">غير نشط</span>
+                    {% endif %}
+                </div>
+                <div class="mt-auto">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted small">السعر:</span>
+                        <span class="fw-bold text-vibrant-green fs-5">{{ service.price|floatformat:2 }} <small class="fs-6">ج.م</small></span>
+                    </div>
+                    <a href="{% url 'services:detail' service.pk %}" class="btn btn-outline-premium w-100 btn-sm">
+                        عرض التفاصيل <i class="fa-solid fa-arrow-left ms-2"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <div class="premium-table-container p-5">
+                <i class="fa-solid fa-briefcase-medical fa-4x mb-3 text-muted"></i>
+                <h4 class="text-white">لا توجد خدمات مسجلة حالياً.</h4>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

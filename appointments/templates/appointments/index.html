@@ -1,0 +1,337 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link href="{% static 'vendor/tom-select/css/tom-select.bootstrap5.min.css' %}" rel="stylesheet">
+<link href="{% static 'vendor/flatpickr/flatpickr.min.css' %}" rel="stylesheet">
+<link href="{% static 'vendor/flatpickr/dark.css' %}" rel="stylesheet">
+
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="fw-bold text-white mb-2">إدارة المواعيد</h2>
+            <p class="text-muted">متابعة وإدارة مواعيد المرضى والأطباء في النظام.</p>
+        </div>
+    </div>
+
+    <!-- Appointment Form Card -->
+    <div class="premium-card p-4 mb-5">
+        <h4 class="form-section-title">
+            <i class="fa-solid fa-calendar-plus text-vibrant-green"></i>
+            إضافة موعد جديد
+        </h4>
+        <form id="appointmentForm">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">المريض</label>
+                    <select id="patientSelect" name="patient" placeholder="ابحث عن مريض بالاسم أو الهاتف..."
+                        required></select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">الطبيب</label>
+                    <select id="doctorSelect" name="doctor" placeholder="ابحث عن طبيب بالاسم أو التخصص..."
+                        required></select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">التاريخ والوقت</label>
+                    <input type="datetime-local" class="form-control" name="date" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">الحالة</label>
+                    <select class="form-control" name="status">
+                        <option value="pending">قيد الانتظار</option>
+                        <option value="completed">تم الكشف</option>
+                        <option value="confirmed" selected>تم التأكيد</option>
+                        <option value="cancelled">تم الإلغاء</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">رقم الغرفة</label>
+                    <input type="number" class="form-control" name="room_number" placeholder="رقم الغرفة">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">التكلفة (ج.م)</label>
+                    <input type="number" step="0.01" class="form-control" name="cost" placeholder="0.00" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">ملاحظات</label>
+                    <textarea class="form-control" name="notes" rows="1"
+                        placeholder="أضف أي ملاحظات إضافية هنا..."></textarea>
+                </div>
+                <div class="col-12 text-start mt-4">
+                    <button type="submit" class="btn btn-premium px-5" id="submitBtn">
+                        <i class="fa-solid fa-save me-2"></i> <span id="btnText">حفظ الموعد</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-container d-flex flex-wrap align-items-center gap-3">
+        <div class="d-flex align-items-center gap-2 me-auto">
+            <a href="#" class="filter-link active" data-status="all">الكل</a>
+            <a href="#" class="filter-link" data-status="pending">قيد الانتظار</a>
+            <a href="#" class="filter-link" data-status="completed">تم الكشف</a>
+            <a href="#" class="filter-link" data-status="confirmed">تم التأكيد</a>
+            <a href="#" class="filter-link" data-status="cancelled">تم الإلغاء</a>
+        </div>
+
+        <div class="date-filter-box d-flex align-items-center gap-2 p-2 rounded-4"
+            style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+            <label class="text-white-50 small mb-0 ms-2">بحث بالتاريخ:</label>
+            <input type="text" id="dateFilterInput"
+                class="form-control form-control-sm bg-dark text-white border-0 rounded-3 text-center" 
+                style="width: 150px;" placeholder="اختر التاريخ">
+            <button id="dateSearchBtn" class="btn btn-sm btn-premium py-1 px-3">
+                <i class="fa-solid fa-search"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="premium-table-container">
+        <table class="premium-table">
+            <thead>
+                <tr>
+                    <th class="text-nowrap" style="width: 5%">رقم الجلسة</th>
+                    <th class="text-nowrap" style="width: 5%">رقم الغرفة</th>
+                    <th>المريض</th>
+                    <th>الطبيب</th>
+                    <th class="text-nowrap" style="width: 10%">الحالة</th>
+                    <th class="text-nowrap" style="width: 15%">إجراءات</th>
+                </tr>
+            </thead>
+            <tbody id="appointmentsTableBody">
+                <!-- Data will be populated here via AJAX -->
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/tom-select/js/tom-select.complete.min.js' %}"></script>
+<script src="{% static 'vendor/flatpickr/flatpickr.min.js' %}"></script>
+<script>
+    let currentStatus = 'all';
+    let currentPage = 1;
+
+    // Tom Select for Patient
+    const patientSelect = new TomSelect("#patientSelect", {
+        valueField: 'id',
+        labelField: 'full_name',
+        searchField: 'full_name',
+        load: function (query, callback) {
+            if (!query.length) return callback();
+            fetch(`/patients/get-patient/?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => callback(data))
+                .catch(() => callback());
+        },
+        render: {
+            option: function (item, escape) {
+                return `<div><span class="fw-bold">${escape(item.full_name)}</span></div>`;
+            }
+        }
+    });
+
+    // Tom Select for Doctor
+    const doctorSelect = new TomSelect("#doctorSelect", {
+        valueField: 'id',
+        labelField: 'full_name',
+        searchField: 'full_name',
+        load: function (query, callback) {
+            if (!query.length) return callback();
+            fetch(`/staff/get-doctor/?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => callback(data))
+                .catch(() => callback());
+        }
+    });
+
+    // Refresh Table AJAX
+    function refreshTable(page = 1, status = 'all') {
+        currentStatus = status;
+        currentPage = page;
+        
+        // Get the date from flatpickr in the format Django expects (YYYY-MM-DD)
+        const fpInstance = document.querySelector("#dateFilterInput")._flatpickr;
+        const dateFilter = fpInstance ? fpInstance.formatDate(fpInstance.selectedDates[0], "Y-m-d") : "";
+        
+        const tableBody = document.getElementById('appointmentsTableBody');
+        tableBody.style.opacity = '0.5';
+
+        let url = `/appointments/list/?page=${page}&status=${status}`;
+        if (dateFilter) {
+            url += `&date=${dateFilter}`;
+        }
+
+        fetch(url)
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return;
+                }
+                return response.text();
+            })
+            .then(html => {
+                if (!html) return;
+                tableBody.innerHTML = html;
+                tableBody.style.opacity = '1';
+                attachPaginationEvents();
+            })
+            .catch(err => {
+                console.error("Error fetching appointments:", err);
+                tableBody.style.opacity = '1';
+            });
+    }
+
+    // Attach Pagination Events
+    function attachPaginationEvents() {
+        document.querySelectorAll('.page-link[data-page]').forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                refreshTable(this.dataset.page, currentStatus);
+                window.scrollTo({ top: 500, behavior: 'smooth' });
+            });
+        });
+    }
+
+    // Filter Events
+    document.querySelectorAll('.filter-link').forEach(link => {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.querySelectorAll('.filter-link').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+            refreshTable(1, this.dataset.status);
+        });
+    });
+
+    // Date Filter Event
+    document.getElementById('dateSearchBtn').addEventListener('click', function () {
+        refreshTable(1, currentStatus);
+    });
+
+    // Initialize Flatpickr for Date Filter
+    const fp = flatpickr("#dateFilterInput", {
+        dateFormat: "d / m / Y",
+        defaultDate: "today",
+        theme: "dark",
+        onChange: function(selectedDates, dateStr, instance) {
+            // No need to trigger here if they want to use the search button, 
+            // but usually auto-refresh is better.
+        }
+    });
+
+    // Form Submission AJAX
+    document.getElementById('appointmentForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const submitBtn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+
+        submitBtn.disabled = true;
+        btnText.innerText = 'جاري الحفظ...';
+
+        const formData = new FormData(this);
+
+        fetch('{% url "appointments:create" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                submitBtn.disabled = false;
+                btnText.innerText = 'حفظ الموعد';
+
+                if (data.status === 'success') {
+                    this.reset();
+                    patientSelect.clear();
+                    doctorSelect.clear();
+                    refreshTable(1, currentStatus);
+                    alert(data.message);
+                } else {
+                    alert("خطأ: " + data.message);
+                }
+            })
+            .catch(err => {
+                submitBtn.disabled = false;
+                btnText.innerText = 'حفظ الموعد';
+                alert("حدث خطأ أثناء الاتصال بالخادم.");
+            });
+    });
+
+    // Voice sequence player
+    function playVoiceSequence(sessionNum, roomNum) {
+        const playlist = [
+            `{% static 'voice/bill.mp3' %}`,
+            `{% static 'voice/0.mp3' %}`,
+            `{% static 'voice/' %}${sessionNum}.mp3`,
+            `{% static 'voice/00.mp3' %}`,
+            `{% static 'voice/' %}${roomNum}.mp3`,
+            `{% static 'voice/bill.mp3' %}`,
+
+        ];
+
+        let current = 0;
+        const audio = new Audio();
+
+        audio.onended = function () {
+            current++;
+            if (current < playlist.length) {
+                audio.src = playlist[current];
+                audio.play().catch(e => console.error("Error playing audio:", e));
+            }
+        };
+
+        audio.src = playlist[0];
+        audio.play().catch(e => {
+            console.error("Error starting audio sequence:", e);
+            alert("يرجى التفاعل مع الصفحة أولاً لتفعيل تشغيل الصوت.");
+        });
+    }
+
+    // Update Appointment Status AJAX
+    function updateAppointmentStatus(appointmentId, newStatus) {
+        const statusMap = {
+            'confirmed': 'تأكيد الحضور',
+            'completed': 'إتمام الكشف',
+            'cancelled': 'إلغاء الموعد'
+        };
+        
+        if (!confirm(`هل أنت متأكد من ${statusMap[newStatus]}؟`)) return;
+
+        fetch(`/appointments/update-status/${appointmentId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `status=${newStatus}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                refreshTable(currentPage, currentStatus);
+            } else {
+                alert("خطأ: " + data.message);
+            }
+        })
+        .catch(err => {
+            console.error("Error updating status:", err);
+            alert("حدث خطأ أثناء تحديث الحالة.");
+        });
+    }
+
+    // Initial Load
+    refreshTable();
+</script>
+{% endblock %}

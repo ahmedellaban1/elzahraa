@@ -125,11 +125,12 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+LANGUAGE_CODE = 'en-us'
 
+TIME_ZONE = "Africa/Cairo"
+USE_TZ = True
 USE_I18N = True
 
-USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
@@ -148,6 +149,15 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Authentication Settings
+LOGIN_URL = 'accounts:login'
+LOGIN_REDIRECT_URL = 'appointments:index'  # Or whatever your home is
+LOGOUT_REDIRECT_URL = 'accounts:login'
+
+# Session Settings
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_COOKIE_AGE = 1209600 # 2 weeks in seconds
 
 INTERNAL_IPS = [
     "127.0.0.1",

@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="detail-card">
+        <!-- Header -->
+        <div class="detail-header text-start d-md-flex align-items-center justify-content-start flex-wrap gap-4">
+            <div class="d-flex align-items-center gap-4 flex-wrap justify-content-start">
+                <div class="profile-avatar" style="width: 100px; height: 100px; font-size: 2.5rem; flex-shrink: 0;">
+                    <i class="fa-solid fa-user-injured"></i>
+                </div>
+                <div class="text-start">
+                    <h1 class="text-white fw-bold mb-1">{{ patient.user.get_full_name }}</h1>
+                    <p class="text-muted mb-0">
+                        <i class="fa-solid fa-phone me-1"></i> {{ patient.user.phone_number }}
+                        <span class="mx-2 d-none d-sm-inline">|</span>
+                        <br class="d-block d-sm-none">
+                        <i class="fa-solid fa-map-marker-alt me-1"></i> {{ patient.address|default:"العنوان غير مسجل" }}
+                    </p>
+                </div>
+            </div>
+            <div class="mt-2 mt-md-0 d-flex gap-2 justify-content-start flex-wrap">
+                {% if user.role in 'admin,receptionist' or user.is_superuser %}
+                <a href="{% url 'patients:reset_password' patient.id %}" class="btn btn-outline-info btn-sm px-3" onclick="return confirm('هل أنت متأكد من إعادة تعيين كلمة المرور؟ سيتم توليد كلمة مرور جديدة فوراً.')">
+                    <i class="fa-solid fa-key me-1"></i> تعيين كلمة المرور
+                </a>
+                {% endif %}
+                <a href="{% url 'services:add_service_for_patient' patient.id %}" class="btn btn-premium btn-sm px-3">
+                    <i class="fa-solid fa-plus-circle me-1"></i> إضافة خدمة
+                </a>
+                <a href="{% url 'appointments:index' %}" class="btn btn-outline-light btn-sm px-4">
+                    <i class="fa-solid fa-arrow-left me-1"></i> عودة
+                </a>
+            </div>
+        </div>
+
+        {% if new_password %}
+        <!-- Password Display Alert -->
+        <div class="px-4 pt-4">
+            <div class="alert alert-warning border-warning shadow-sm d-flex align-items-center justify-content-between mb-0" style="background: rgba(255, 193, 7, 0.1); border-radius: 15px;">
+                <div>
+                    <i class="fa-solid fa-shield-halved me-2 text-warning fs-4"></i>
+                    <span class="text-white">كلمة المرور الجديدة: </span>
+                    <strong class="text-vibrant-green fs-5 ms-2" id="tempPassword">{{ new_password }}</strong>
+                </div>
+                <button class="btn btn-sm btn-outline-light" onclick="copyTempPassword()">
+                    <i class="fa-solid fa-copy me-1"></i> نسخ
+                </button>
+            </div>
+        </div>
+        <script>
+            function copyTempPassword() {
+                const pass = document.getElementById('tempPassword').innerText;
+                navigator.clipboard.writeText(pass);
+                alert('تم نسخ كلمة المرور: ' + pass);
+            }
+        </script>
+        {% endif %}
+
+        <!-- Content Tabs -->
+        <div class="p-4">
+            <div class="text-end mb-5">
+                <ul class="nav nav-pills nav-pills-premium" id="pills-tab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="pills-apps-tab" data-bs-toggle="pill" data-bs-target="#pills-apps" type="button" role="tab">المواعيد</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="pills-pres-tab" data-bs-toggle="pill" data-bs-target="#pills-pres" type="button" role="tab">الروشتات</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="pills-services-tab" data-bs-toggle="pill" data-bs-target="#pills-services" type="button" role="tab">الخدمات</button>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="tab-content" id="pills-tabContent">
+                <!-- Appointments Tab -->
+                <div class="tab-pane fade show active" id="pills-apps" role="tabpanel">
+                    <div class="premium-table-container mt-0">
+                        <table class="premium-table">
+                            <thead>
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>الطبيب</th>
+                                    <th>رقم الدور</th>
+                                    <th>الحالة</th>
+                                    <th>التكلفة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for app in appointments %}
+                                <tr>
+                                    <td>{{ app.date|date:"j / n / Y" }}</td>
+                                    <td>{{ app.doctor.user.get_full_name }}</td>
+                                    <td>#{{ app.session_number }}</td>
+                                    <td>
+                                        <span class="status-badge status-{{ app.status }}">
+                                            {{ app.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td class="fw-bold">{{ app.cost }} ج.م</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">لا يوجد سجل مواعيد لهذا المريض.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Prescriptions Tab -->
+                <div class="tab-pane fade" id="pills-pres" role="tabpanel">
+                    <div class="row g-4">
+                        {% for pres in prescriptions %}
+                        <div class="col-md-6">
+                            <div class="history-item">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h5 class="text-vibrant-green mb-0">{{ pres.medicine.name }}</h5>
+                                    <small class="text-muted">{{ pres.appointment.date|date:"j / n / Y" }}</small>
+                                </div>
+                                <p class="text-white mb-1">
+                                    <strong>الجرعة:</strong> {{ pres.dosage }} {{ pres.get_dosage_unit_display }} - {{ pres.get_frequency_display }}
+                                </p>
+                                <p class="text-white-50 small mb-0">
+                                    <strong>المدة:</strong> {{ pres.duration }} {{ pres.get_duration_unit_display }} | <strong>الطريق:</strong> {{ pres.get_route_display }}
+                                </p>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="col-12 text-center py-5 text-muted">لا توجد روشتات مسجلة.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Services Tab -->
+                <div class="tab-pane fade" id="pills-services" role="tabpanel">
+                    <div class="premium-table-container mt-0">
+                        <table class="premium-table">
+                            <thead>
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>الخدمة</th>
+                                    <th>الطبيب</th>
+                                    <th>السعر</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for service in services %}
+                                <tr>
+                                    <td>{{ service.created_at|date:"j / n / Y" }}</td>
+                                    <td class="text-vibrant-green fw-bold">{{ service.service.name }}</td>
+                                    <td>{{ service.doctor.user.get_full_name }}</td>
+                                    <td class="fw-bold">{{ service.service.price }} ج.م</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-muted">لا توجد خدمات مسجلة.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="auth-container text-start w-100" style="max-width: 100%; border: 1px solid var(--vibrant-green);">
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <div class="stats-icon icon-clinic mb-0">
+                        <i class="fa-solid fa-file-medical"></i>
+                    </div>
+                    <h2 class="text-white fw-bold mb-0">إضافة خدمة للمريض</h2>
+                </div>
+
+                <div class="alert alert-info bg-dark border-0 text-white-50 mb-4 py-3">
+                    <i class="fa-solid fa-user-injured me-2 text-vibrant-green"></i>
+                    المريض: <strong class="text-white">{{ patient.user.get_full_name }}</strong>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="patient_id" value="{{ patient.id }}">
+                    
+                    <div class="mb-4">
+                        <label class="form-label text-white-50">اختر الخدمة</label>
+                        <select name="service_id" class="form-control" required>
+                            <option value="">-- اختر الخدمة المطلوبة --</option>
+                            {% for s in services %}
+                                <option value="{{ s.id }}">{{ s.name }} ({{ s.price }} ج.م)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label text-white-50">الطبيب المعالج</label>
+                        <select name="doctor_id" class="form-control" required>
+                            <option value="">-- اختر الطبيب المسؤول --</option>
+                            {% for d in doctors %}
+                                <option value="{{ d.id }}">{{ d.user.get_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mt-5 d-flex gap-3">
+                        <button type="submit" class="btn btn-premium w-100 py-3">
+                            <i class="fa-solid fa-check-circle me-2"></i> تأكيد وإضافة الخدمة
+                        </button>
+                        <a href="{% url 'patients:detail' patient.id %}" class="btn btn-outline-light px-4 py-3">
+                            إلغاء
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

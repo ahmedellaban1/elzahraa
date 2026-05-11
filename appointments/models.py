@@ -11,6 +11,7 @@ class Appointment(models.Model):
     doctor = models.ForeignKey('staff.Doctor', on_delete=models.CASCADE, related_name='appointments')
     date = models.DateTimeField(null=False, blank=False)
     session_number = models.PositiveIntegerField(null=True, blank=True, editable=False) # Daily queue number
+    room_number = models.PositiveIntegerField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=APPOINTMENT_STATUS_CHOICES, default='confirmed')
     cost = models.FloatField(null=False, blank=False)
     notes = models.TextField(null=True, blank=True)
