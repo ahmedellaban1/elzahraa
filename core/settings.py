@@ -51,11 +51,10 @@ INSTALLED_APPS = [
     'dashboard',
     'medicines',
 
-    # debug toolbar
+    # third party apps
     'debug_toolbar',
-
-    # summernote
     'django_summernote',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -125,11 +124,10 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = "Africa/Cairo"
+TIME_ZONE = 'Africa/Cairo'
 USE_TZ = True
 USE_I18N = True
+USE_L10N = True
 
 
 
@@ -152,7 +150,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Authentication Settings
 LOGIN_URL = 'accounts:login'
-LOGIN_REDIRECT_URL = 'appointments:index'  # Or whatever your home is
+LOGIN_REDIRECT_URL = 'dashboard:dashboard_router'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
 # Session Settings

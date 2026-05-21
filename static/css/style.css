@@ -994,3 +994,72 @@ select.form-control {
     background: rgba(255, 255, 255, 0.05);
     transform: translateX(-5px);
 }
+
+/* Summernote Dark Theme overrides */
+.note-editor.note-frame {
+    background-color: #151f1c !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 15px !important;
+}
+.note-toolbar {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    padding: 10px !important;
+}
+.note-btn {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+}
+.note-btn:hover, .note-btn.active {
+    background-color: var(--vibrant-green) !important;
+    color: #151f1c !important;
+}
+.note-editable {
+    background-color: #111816 !important;
+    color: white !important;
+    min-height: 250px;
+    font-family: inherit;
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+.note-statusbar {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+.note-dropdown-menu {
+    background-color: #151f1c !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+.note-dropdown-menu a.note-dropdown-item {
+    color: white !important;
+}
+.note-dropdown-menu a.note-dropdown-item:hover {
+    background-color: var(--vibrant-green) !important;
+    color: #151f1c !important;
+}
+.note-modal-content {
+    background-color: #151f1c !important;
+    color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Premium TomSelect Deep-Green Theme Overrides */
+.prescription-select + .ts-wrapper .ts-control {
+    background-color: rgba(12, 55, 32, 0.2) !important;
+    color: white !important;
+    border-radius: 10px !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+.prescription-select + .ts-wrapper .ts-dropdown {
+    background: #151f1c !important;
+    color: white !important;
+}
+.prescription-select + .ts-wrapper .ts-dropdown .active {
+    background: var(--vibrant-green) !important;
+}
+.prescription-select + .ts-wrapper .ts-dropdown .option {
+    color: white !important;
+}

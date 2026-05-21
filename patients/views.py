@@ -3,7 +3,7 @@ from django.db.models import Q
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Patient
 from .forms import PatientCreationForm
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib import messages
 from django.db import transaction
 from django.utils.crypto import get_random_string
@@ -13,6 +13,7 @@ from staff.models import Doctor
 
 
 @login_required
+@permission_required('patients.view_patient', raise_exception=True)
 def get_patient(request):
     query = request.GET.get('q', '')
     patients = Patient.objects.filter(
@@ -31,17 +32,16 @@ def get_patient(request):
     return JsonResponse(data, safe=False)
 
 @login_required
+@permission_required('patients.view_patient', raise_exception=True)
 def patient_detail(request, pk):
-    # Check if user is staff or doctor
-    if not request.user.is_superuser and request.user.role not in ['admin', 'doctor', 'receptionist']:
-        return render(request, '403.html', status=403)
-        
     patient = get_object_or_404(Patient, pk=pk)
     appointments = patient.appointments.all().order_by('-date')
     services = ServiceRecord.objects.filter(patient=patient).order_by('-created_at')
     
-    # Get all prescriptions from all appointments
-    prescriptions = PrescriptionItem.objects.filter(appointment__patient=patient).order_by('-created_at')
+    # Get all appointments of this patient that have at least one prescription item
+    prescribed_appointments = patient.appointments.filter(
+        prescription_items__isnull=False
+    ).distinct().order_by('-date')
     
     # Handle temporary password display from session
     new_password = None
@@ -54,7 +54,7 @@ def patient_detail(request, pk):
         'patient': patient,
         'appointments': appointments,
         'services': services,
-        'prescriptions': prescriptions,
+        'prescribed_appointments': prescribed_appointments,
         'available_services': Service.objects.filter(active=True),
         'doctors': Doctor.objects.all(),
         'new_password': new_password,
@@ -62,11 +62,8 @@ def patient_detail(request, pk):
     return render(request, 'patients/patient_detail.html', context)
 
 @login_required
+@permission_required('patients.add_patient', raise_exception=True)
 def create_patient(request):
-    # Check if user is staff or admin
-    if not request.user.is_superuser and request.user.role not in ['admin', 'receptionist']:
-        return render(request, '403.html', status=403)
-        
     generated_password = None
     
     if request.method == 'POST':
@@ -107,11 +104,8 @@ def create_patient(request):
     })
 
 @login_required
+@permission_required('accounts.change_customuser', raise_exception=True)
 def reset_patient_password(request, pk):
-    # Check if user is staff or admin
-    if not request.user.is_superuser and request.user.role not in ['admin', 'receptionist']:
-        return render(request, '403.html', status=403)
-        
     patient = get_object_or_404(Patient, pk=pk)
     user = patient.user
     

@@ -1,11 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib import messages
 from .models import Service, ServiceRecord
 from patients.models import Patient
 from staff.models import Doctor
 
 @login_required
+@permission_required('services.add_servicerecord', raise_exception=True)
 def add_service(request, patient_id=None):
     if patient_id:
         patient = get_object_or_404(Patient, pk=patient_id)
@@ -39,11 +40,8 @@ def add_service(request, patient_id=None):
     return render(request, 'services/add_service.html', context)
 
 @login_required
+@permission_required('services.add_service', raise_exception=True)
 def create_service(request):
-    # Only admins can define services
-    if not request.user.is_superuser and request.user.role != 'admin':
-        return render(request, '403.html', status=403)
-        
     if request.method == 'POST':
         name = request.POST.get('name')
         price = request.POST.get('price')
@@ -64,6 +62,7 @@ def create_service(request):
     return render(request, 'services/create_service.html', context)
 
 @login_required
+@permission_required('services.view_service', raise_exception=True)
 def service_list(request):
     services = Service.objects.all().order_by('name')
     context = {
@@ -73,6 +72,7 @@ def service_list(request):
     return render(request, 'services/service_list.html', context)
 
 @login_required
+@permission_required('services.view_service', raise_exception=True)
 def service_detail(request, pk):
     service = get_object_or_404(Service, pk=pk)
     # Get recent records for this service

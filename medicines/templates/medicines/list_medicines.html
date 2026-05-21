@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header & Search -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-5 gap-3">
+        <div>
+            <h2 class="fw-bold text-white mb-1">إدارة الأدوية</h2>
+            <p class="text-muted">عرض وتعديل وتفعيل/إلغاء تفعيل الأدوية المتاحة في النظام.</p>
+        </div>
+        
+        <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'medicines:add_medicine' %}" class="btn btn-premium px-4">
+                <i class="fa-solid fa-plus me-2"></i> إضافة دواء جديد
+            </a>
+            <a href="{% url 'dashboard:admin_dashboard' %}" class="btn btn-outline-light px-4">
+                العودة للوحة التحكم
+            </a>
+        </div>
+    </div>
+
+    <!-- Search Box -->
+    <div class="premium-table-container p-4 mb-4">
+        <form method="GET" class="row g-3 align-items-center">
+            <div class="col-md-9">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" name="q" class="form-control form-control-with-icon" 
+                           placeholder="البحث بالاسم التجاري أو الاسم العلمي..." value="{{ query }}">
+                </div>
+            </div>
+            <div class="col-md-3 d-grid">
+                <button type="submit" class="btn btn-primary btn-premium py-2">
+                    <i class="fa-solid fa-filter me-2"></i> تصفية البحث
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Medicines Table -->
+    <div class="premium-table-container p-4">
+        <div class="table-responsive">
+            <table class="premium-table text-white">
+                <thead>
+                    <tr>
+                        <th>الاسم التجاري</th>
+                        <th>الاسم العلمي</th>
+                        <th>التركيز</th>
+                        <th style="width: 15%">الحالة</th>
+                        <th style="width: 25%">العمليات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for medicine in medicines %}
+                    <tr id="medicine-row-{{ medicine.id }}">
+                        <td class="fw-bold fs-5">{{ medicine.trade_name }}</td>
+                        <td class="text-white-50">{{ medicine.scientific_name }}</td>
+                        <td>
+                            {% if medicine.concentration %}
+                                {{ medicine.concentration }} {{ medicine.get_concentration_unit_display }}
+                            {% else %}
+                                <span class="text-muted small">بدون تركيز</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {% if medicine.is_active %}bg-success{% else %}bg-danger{% endif %} opacity-75" 
+                                  id="status-badge-{{ medicine.id }}">
+                                {% if medicine.is_active %}نشط{% else %}غير نشط{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'medicines:edit_medicine' medicine.id %}" class="btn btn-outline-info btn-sm px-3">
+                                    <i class="fa-solid fa-edit me-1"></i> تعديل
+                                </a>
+                                <button type="button" class="btn btn-outline-warning btn-sm px-3" 
+                                        onclick="toggleStatus({{ medicine.id }})">
+                                    <i class="fa-solid fa-toggle-on me-1"></i> تغيير الحالة
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-5 fs-5">
+                            لا توجد أدوية مسجلة في النظام.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    function toggleStatus(medicineId) {
+        fetch(`/medicines/${medicineId}/toggle/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const badge = document.getElementById(`status-badge-${medicineId}`);
+                if (data.is_active) {
+                    badge.className = 'badge bg-success opacity-75';
+                    badge.innerText = 'نشط';
+                } else {
+                    badge.className = 'badge bg-danger opacity-75';
+                    badge.innerText = 'غير نشط';
+                }
+            } else {
+                alert("خطأ: " + data.message);
+            }
+        })
+        .catch(err => {
+            console.error("Error toggling status:", err);
+            alert("حدث خطأ أثناء الاتصال بالخادم لتغيير الحالة.");
+        });
+    }
+</script>
+{% endblock %}

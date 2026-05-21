@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="auth-container text-start w-100" style="max-width: 100%; border: 1px solid var(--vibrant-green);">
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <div class="stats-icon icon-apps mb-0" style="background: rgba(46, 204, 113, 0.15); color: #2ecc71;">
+                        <i class="fa-solid fa-pills"></i>
+                    </div>
+                    <h2 class="text-white fw-bold mb-0">تعديل الدواء</h2>
+                </div>
+
+                <p class="text-white-50 mb-4">
+                    قم بتعديل بيانات الدواء أدناه لتحديث معلوماته في النظام.
+                </p>
+
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4">
+                        <label class="form-label text-white-50">الاسم التجاري</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-capsules"></i></span>
+                            <input type="text" name="trade_name" class="form-control form-control-with-icon" 
+                                   value="{{ medicine.trade_name }}" required placeholder="مثال: Panadol, Congestal...">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label text-white-50">الاسم العلمي</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-flask"></i></span>
+                            <input type="text" name="scientific_name" class="form-control form-control-with-icon" 
+                                   value="{{ medicine.scientific_name }}" required placeholder="مثال: Paracetamol...">
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label text-white-50">التركيز (اختياري)</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-gauge-high"></i></span>
+                                <input type="number" name="concentration" class="form-control form-control-with-icon" 
+                                       value="{{ medicine.concentration|default_if_none:'' }}" placeholder="مثال: 500, 1000">
+                            </div>
+                        </div>
+                        <div class="col-md-6 mt-4 mt-md-0">
+                            <label class="form-label text-white-50">وحدة التركيز</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-vial"></i></span>
+                                <select name="concentration_unit" class="form-select bg-dark text-white border-secondary" required>
+                                    <option value="" disabled>اختر الوحدة</option>
+                                    {% for value, label in concentration_units %}
+                                        <option value="{{ value }}" {% if medicine.concentration_unit == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info bg-dark border-0 text-info small mb-4">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        تعديل بيانات الدواء سيحدث فورياً لجميع الروشتات المستقبلية.
+                    </div>
+
+                    <div class="mt-5 d-flex gap-3">
+                        <button type="submit" class="btn btn-premium w-100 py-3">
+                            <i class="fa-solid fa-save me-2"></i> حفظ التعديلات
+                        </button>
+                        <a href="{% url 'medicines:list_medicines' %}" class="btn btn-outline-light px-4 py-3">
+                            إلغاء
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

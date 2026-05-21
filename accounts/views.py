@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 
 def user_login(request):
     if request.user.is_authenticated:
-        return redirect('appointments:index')
+        return redirect('dashboard:dashboard_router')
 
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -16,8 +16,14 @@ def user_login(request):
         if user is not None:
             auth_login(request, user)
             messages.success(request, f"مرحباً بك مجدداً يا {user.first_name}!")
-            next_url = request.GET.get('next', 'appointments:index')
-            return redirect(next_url)
+            
+            # Check for next url in query params
+            next_url = request.GET.get('next')
+            if next_url:
+                return redirect(next_url)
+                
+            # Perform role-based redirection via central router
+            return redirect('dashboard:dashboard_router')
         else:
             messages.error(request, "اسم المستخدم أو كلمة المرور غير صحيحة.")
     

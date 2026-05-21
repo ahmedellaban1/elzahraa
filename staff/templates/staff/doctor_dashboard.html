@@ -1,23 +1,37 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<link href="{% static 'vendor/flatpickr/flatpickr.min.css' %}" rel="stylesheet">
+<link href="{% static 'vendor/flatpickr/dark.css' %}" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
 <div class="container py-5">
     <!-- Header -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-5 gap-3">
         <div>
             <h2 class="fw-bold text-white mb-1">لوحة تحكم الطبيب</h2>
-            <p class="text-muted">مرحباً د. {{ doctor.user.get_full_name }} | إليك مواعيد اليوم {{ today|date:"Y-m-d" }}</p>
+            <p class="text-muted">مرحباً د. {{ doctor.user.get_full_name }}</p>
         </div>
         
-        <div class="premium-table-container p-3 m-0 d-flex align-items-center gap-3">
-            <span class="text-white fw-bold"><i class="fa-solid fa-user-md text-vibrant-green me-2"></i>{{ doctor.specialization }}</span>
+        <div class="d-flex align-items-center gap-3">
+            <form method="GET" class="d-flex align-items-center gap-2 m-0" id="dateFilterForm">
+                <i class="fa-solid fa-calendar-day text-vibrant-green"></i>
+                <input type="text" id="datePicker" name="date" 
+                       class="form-control bg-transparent border-0 text-white fw-bold fs-5 text-center" 
+                       style="width: 150px; cursor: pointer;" 
+                       placeholder="اختر التاريخ">
+            </form>
+            <div class="premium-table-container p-2 px-3 m-0 d-flex align-items-center">
+                <span class="text-white fw-bold"><i class="fa-solid fa-user-md text-vibrant-green me-2"></i>{{ doctor.specialization }}</span>
+            </div>
         </div>
     </div>
 
     <!-- Appointments Table -->
     <div class="premium-table-container p-4">
-        <h4 class="mb-4 text-white">مواعيد اليوم</h4>
+        <h4 class="mb-4 text-white">مواعيد يوم {{ target_date|date:"Y-m-d" }}</h4>
         <div class="table-responsive">
             <table class="premium-table text-white">
                 <thead>
@@ -67,4 +81,22 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/flatpickr/flatpickr.min.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const targetDate = "{{ target_date|date:'Y-m-d' }}";
+        
+        flatpickr("#datePicker", {
+            dateFormat: "Y-m-d",
+            defaultDate: targetDate,
+            theme: "dark",
+            onChange: function(selectedDates, dateStr, instance) {
+                document.getElementById('dateFilterForm').submit();
+            }
+        });
+    });
+</script>
 {% endblock %}

@@ -92,12 +92,18 @@
                                     </a>
                                 </td>
                             {% else %}
-                                <td class="fw-bold">{{ item.user.get_full_name }}</td>
+                                <td class="fw-bold">
+                                    <a href="{% url 'staff:doctor_detail' item.pk %}" class="text-white text-decoration-none">
+                                        {{ item.user.get_full_name }}
+                                    </a>
+                                </td>
                                 <td><span class="badge bg-primary opacity-75">{{ item.specialization|default:"-" }}</span></td>
                                 <td>{{ item.user.phone_number }}</td>
                                 <td>{{ item.get_examination_type_display }}</td>
                                 <td class="text-center">
-                                    <span class="text-muted">لا توجد تفاصيل</span>
+                                    <a href="{% url 'staff:doctor_detail' item.pk %}" class="btn btn-sm btn-outline-info">
+                                        <i class="fa-solid fa-eye"></i> عرض
+                                    </a>
                                 </td>
                             {% endif %}
                         </tr>

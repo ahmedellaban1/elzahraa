@@ -1,0 +1,299 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link href="{% static 'vendor/flatpickr/flatpickr.min.css' %}" rel="stylesheet">
+<link href="{% static 'vendor/flatpickr/dark.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="mb-4 d-flex justify-content-between align-items-center">
+        <a href="{% url 'dashboard:unified_search' %}?type=doctor" class="text-vibrant-green text-decoration-none fw-bold">
+            <i class="fa-solid fa-arrow-right me-2"></i> العودة للبحث
+        </a>
+        
+        {% if user.role in 'admin,receptionist' or user.is_superuser %}
+        <a href="{% url 'staff:reset_doctor_password' doctor.id %}" class="btn btn-outline-info btn-sm px-3" onclick="return confirm('هل أنت متأكد من إعادة تعيين كلمة المرور؟ سيتم توليد كلمة مرور جديدة فوراً.')">
+            <i class="fa-solid fa-key me-1"></i> تعيين كلمة المرور
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Header & Period Filter -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-5 gap-3 border-bottom border-secondary pb-4">
+        <div>
+            <h2 class="fw-bold text-white mb-1">التقرير المالي للطبيب</h2>
+            <p class="text-muted mb-0">متابعة الإيرادات والتحليلات المالية والعمليات للطبيب د. {{ doctor.user.get_full_name }}.</p>
+        </div>
+        
+        <form method="GET" class="d-flex align-items-center gap-3">
+            <div class="date-range-container d-flex align-items-center gap-2">
+                <i class="fa-solid fa-calendar-range text-vibrant-green"></i>
+                <input type="text" id="dateRangePicker" name="date_range" 
+                       class="form-control bg-transparent border-0 text-white text-center" 
+                       style="width: 250px;" placeholder="اختر الفترة الزمنية">
+                <input type="hidden" name="start_date" id="start_date" value="{{ start_date }}">
+                <input type="hidden" name="end_date" id="end_date" value="{{ end_date }}">
+            </div>
+            <button type="submit" class="btn btn-premium px-4">
+                <i class="fa-solid fa-sync-alt me-2"></i> تحديث
+            </button>
+            <button type="button" class="btn btn-outline-success px-4" onclick="exportDoctorExcel()">
+                <i class="fa-solid fa-file-excel me-2"></i> تصدير Excel
+            </button>
+        </form>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="stats-card text-center">
+                <div class="stats-icon icon-revenue mx-auto">
+                    <i class="fa-solid fa-coins"></i>
+                </div>
+                <h6 class="text-muted small text-uppercase">إجمالي الإيرادات</h6>
+                <h3 class="fw-bold text-white mb-0">{{ total_revenue|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card text-center">
+                <div class="stats-icon icon-doctor mx-auto">
+                    <i class="fa-solid fa-user-md"></i>
+                </div>
+                <h6 class="text-muted small text-uppercase">نصيب الطبيب</h6>
+                <h3 class="fw-bold text-info mb-0">{{ doctor_share|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card text-center">
+                <div class="stats-icon icon-clinic mx-auto">
+                    <i class="fa-solid fa-hospital"></i>
+                </div>
+                <h6 class="text-muted small text-uppercase">صافي العيادة</h6>
+                <h3 class="fw-bold text-vibrant-green mb-0">{{ clinic_share|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card text-center">
+                <div class="stats-icon icon-apps mx-auto" style="background: rgba(241, 196, 15, 0.15); color: #f1c40f;">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <h6 class="text-muted small text-uppercase">عدد العمليات الكلي</h6>
+                <h3 class="fw-bold text-white mb-0">{{ app_count|add:service_count }} <small class="fs-6 text-muted">عملية</small></h3>
+                <span class="badge bg-primary mt-2">كشوفات: {{ app_count }}</span>
+                <span class="badge bg-success mt-2">خدمات: {{ service_count }}</span>
+            </div>
+        </div>
+    </div>
+
+    {% if new_password %}
+    <!-- Password Display Alert -->
+    <div class="mb-4">
+        <div class="alert alert-warning border-warning shadow-sm d-flex align-items-center justify-content-between mb-0" style="background: rgba(255, 193, 7, 0.1); border-radius: 15px;">
+            <div>
+                <i class="fa-solid fa-shield-halved me-2 text-warning fs-4"></i>
+                <span class="text-white">كلمة المرور الجديدة: </span>
+                <strong class="text-vibrant-green fs-5 ms-2" id="tempPassword">{{ new_password }}</strong>
+            </div>
+            <button class="btn btn-sm btn-outline-light" onclick="copyTempPassword()">
+                <i class="fa-solid fa-copy me-1"></i> نسخ
+            </button>
+        </div>
+    </div>
+    <script>
+        function copyTempPassword() {
+            const pass = document.getElementById('tempPassword').innerText;
+            navigator.clipboard.writeText(pass);
+            alert('تم نسخ كلمة المرور: ' + pass);
+        }
+    </script>
+    {% endif %}
+
+    <div class="row g-4">
+        <!-- Profile Sidebar -->
+        <div class="col-lg-4">
+            <div class="premium-table-container p-4 text-center mb-4">
+                <div class="mb-4">
+                    <div class="rounded-circle bg-vibrant-green d-flex justify-content-center align-items-center mx-auto" 
+                         style="width: 100px; height: 100px; font-size: 2.5rem; color: #1a1a1a;">
+                        <i class="fa-solid fa-user-md"></i>
+                    </div>
+                </div>
+                <h3 class="text-white fw-bold mb-1">{{ doctor.user.get_full_name }}</h3>
+                <p class="text-muted mb-1"><i class="fa-solid fa-user me-1"></i> {{ doctor.user.username }}</p>
+                <p class="text-vibrant-green mb-3 fs-5">{{ doctor.specialization|default:"غير محدد" }}</p>
+                
+                <div class="d-flex justify-content-center gap-2 mb-4">
+                    <span class="badge bg-dark-green border border-success p-2">طبيب</span>
+                </div>
+
+                <div class="text-start">
+                    <div class="mb-3 border-bottom border-secondary pb-2">
+                        <small class="text-muted d-block mb-1">رقم الهاتف</small>
+                        <span class="text-white"><i class="fa-solid fa-phone text-info me-2"></i>{{ doctor.user.phone_number }}</span>
+                    </div>
+                    <div class="mb-3 border-bottom border-secondary pb-2">
+                        <small class="text-muted d-block mb-1">تاريخ الانضمام</small>
+                        <span class="text-white"><i class="fa-solid fa-calendar text-info me-2"></i>{{ doctor.user.date_joined|date:"Y-m-d" }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial Info -->
+            <div class="premium-table-container p-4">
+                <h5 class="text-white mb-4 border-bottom border-secondary pb-2">
+                    <i class="fa-solid fa-file-invoice-dollar text-warning me-2"></i>تفاصيل التعاقد
+                </h5>
+                <div class="mb-3">
+                    <small class="text-muted d-block mb-1">نظام المحاسبة</small>
+                    <span class="text-white fw-bold">{{ doctor.get_examination_type_display }}</span>
+                </div>
+                {% if doctor.examination_type == 'percentage' %}
+                <div class="mb-3">
+                    <small class="text-muted d-block mb-1">النسبة المئوية</small>
+                    <span class="text-warning fw-bold h4">{{ doctor.percentage_value }}%</span>
+                </div>
+                {% elif doctor.examination_type == 'time_share' %}
+                <div class="mb-3">
+                    <small class="text-muted d-block mb-1">القيمة الثابتة للموعد</small>
+                    <span class="text-warning fw-bold h4">{{ doctor.price_value }} جنيه</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Recent Appointments -->
+            <div class="premium-table-container p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
+                    <h5 class="text-white m-0">
+                        <i class="fa-solid fa-calendar-check text-info me-2"></i>أحدث المواعيد
+                    </h5>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="premium-table text-white">
+                        <thead>
+                            <tr>
+                                <th>التاريخ</th>
+                                <th>المريض</th>
+                                <th>التكلفة</th>
+                                <th>الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for appt in appointments %}
+                            <tr>
+                                <td>{{ appt.date|date:"Y-m-d g:i A" }}</td>
+                                <td>
+                                    <a href="{% url 'patients:detail' appt.patient.pk %}" class="text-info text-decoration-none fw-bold">
+                                        {{ appt.patient.user.get_full_name }}
+                                    </a>
+                                </td>
+                                <td><span class="text-success fw-bold">{{ appt.cost }} جنيه</span></td>
+                                <td>
+                                    {% if appt.status == 'pending' %}
+                                        <span class="badge bg-warning text-dark"><i class="fa-regular fa-clock me-1"></i>قيد الانتظار</span>
+                                    {% elif appt.status == 'confirmed' %}
+                                        <span class="badge bg-primary"><i class="fa-solid fa-check me-1"></i>مؤكد</span>
+                                    {% elif appt.status == 'completed' %}
+                                        <span class="badge bg-success"><i class="fa-solid fa-check-double me-1"></i>مكتمل</span>
+                                    {% elif appt.status == 'cancelled' %}
+                                        <span class="badge bg-danger"><i class="fa-solid fa-xmark me-1"></i>ملغي</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">لا توجد مواعيد مسجلة</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Recent Services -->
+            <div class="premium-table-container p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
+                    <h5 class="text-white m-0">
+                        <i class="fa-solid fa-stethoscope text-primary me-2"></i>أحدث الخدمات المقدمة
+                    </h5>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="premium-table text-white">
+                        <thead>
+                            <tr>
+                                <th>التاريخ</th>
+                                <th>المريض</th>
+                                <th>الخدمة</th>
+                                <th>السعر الإجمالي</th>
+                                <th>حصة الطبيب</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in services %}
+                            <tr>
+                                <td>{{ record.created_at|date:"Y-m-d" }}</td>
+                                <td>
+                                    <a href="{% url 'patients:detail' record.patient.pk %}" class="text-info text-decoration-none fw-bold">
+                                        {{ record.patient.user.get_full_name }}
+                                    </a>
+                                </td>
+                                <td>{{ record.service.name }}</td>
+                                <td>{{ record.service.price }} جنيه</td>
+                                <td><span class="text-warning fw-bold">{{ record.doctor_amount|floatformat:2 }} جنيه</span></td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">لا توجد خدمات مسجلة</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/flatpickr/flatpickr.min.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const startDate = "{{ start_date }}";
+        const endDate = "{{ end_date }}";
+        
+        flatpickr("#dateRangePicker", {
+            mode: "range",
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "j / n / Y",
+            defaultDate: [startDate, endDate],
+            theme: "dark",
+            onClose: function(selectedDates, dateStr, instance) {
+                if (selectedDates.length === 2) {
+                    document.getElementById('start_date').value = instance.formatDate(selectedDates[0], "Y-m-d");
+                    document.getElementById('end_date').value = instance.formatDate(selectedDates[1], "Y-m-d");
+                } else if (selectedDates.length === 1) {
+                    const singleDate = instance.formatDate(selectedDates[0], "Y-m-d");
+                    document.getElementById('start_date').value = singleDate;
+                    document.getElementById('end_date').value = singleDate;
+                }
+            }
+        });
+    });
+
+    function exportDoctorExcel() {
+        const startDate = document.getElementById('start_date').value;
+        const endDate = document.getElementById('end_date').value;
+        const url = "{% url 'staff:export_doctor_excel' doctor.id %}?start_date=" + startDate + "&end_date=" + endDate;
+        window.location.href = url;
+    }
+</script>
+{% endblock %}

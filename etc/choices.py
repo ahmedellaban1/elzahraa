@@ -34,6 +34,7 @@ MEDICINE_DOSAGE_UNIT_CHOICES = (
     ('capsule', 'كبسولة'),
     ('injection', 'حقنة'),
     ('syrup', 'شراب'),
+    ('pill', 'حبة'),
 )
 
 MEDICINE_FREQUENCY_CHOICES = (
@@ -85,5 +86,5 @@ MEDICINE_NOTES = (
     ('after_breakfast', 'بعد الفطور'),
     ('after_lunch', 'بعد الغداء'),
     ('after_dinner', 'بعد العشاء'),
-    
+    ('after_food', 'بعد الطعام'),
 )

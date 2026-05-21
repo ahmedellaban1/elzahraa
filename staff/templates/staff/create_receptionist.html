@@ -11,8 +11,8 @@
                     <div class="card-body p-5 text-center">
                         <div class="mb-4">
                             <i class="fa-solid fa-circle-check text-success fs-1 mb-3"></i>
-                            <h2 class="text-white mb-2">تم إنشاء حساب المريض بنجاح!</h2>
-                            <p class="text-white-50">يرجى تسليم بيانات الدخول التالية للمريض:</p>
+                            <h2 class="text-white mb-2">تم إنشاء حساب موظف الاستقبال بنجاح!</h2>
+                            <p class="text-white-50">يرجى تسليم بيانات الدخول التالية للموظف:</p>
                         </div>
                         
                         <div class="bg-dark p-4 rounded-3 border border-secondary mb-4">
@@ -34,8 +34,8 @@
                         </div>
 
                         <div class="d-grid gap-2">
-                            <a href="{% url 'patients:create_patient' %}" class="btn btn-primary btn-premium py-3">إضافة مريض آخر</a>
-                            <a href="{% url 'dashboard:dashboard_router' %}" class="btn btn-outline-light py-3">العودة للوحة التحكم</a>
+                            <a href="{% url 'staff:create_receptionist' %}" class="btn btn-primary btn-premium py-3">إضافة موظف آخر</a>
+                            <a href="{% url 'dashboard:admin_dashboard' %}" class="btn btn-outline-light py-3">العودة للوحة التحكم</a>
                         </div>
                     </div>
                 </div>
@@ -43,15 +43,15 @@
                 <!-- Registration Form -->
                 <div class="card card-premium shadow-lg border-0 overflow-hidden" style="background: rgba(24, 24, 24, 0.9); backdrop-filter: blur(10px); border-radius: 20px;">
                     <div class="card-header bg-transparent border-0 p-4 pb-0 text-center">
-                        <h2 class="text-white fw-bold mb-0">إضافة مريض جديد</h2>
-                        <p class="text-white-50 mt-2">أدخل بيانات المريض لإنشاء حساب جديد تلقائياً</p>
+                        <h2 class="text-white fw-bold mb-0">إضافة موظف استقبال جديد</h2>
+                        <p class="text-white-50 mt-2">أدخل بيانات الموظف لإنشاء حساب جديد وتعيين تفاصيل الراتب والتعيين</p>
                     </div>
                     <div class="card-body p-4 p-md-5">
                         <form method="post" class="needs-validation" novalidate>
                             {% csrf_token %}
                             
                             <h5 class="text-vibrant-green mb-4 border-bottom border-secondary pb-2">
-                                <i class="fa-solid fa-user-plus me-2"></i>البيانات الشخصية
+                                <i class="fa-solid fa-user me-2"></i>البيانات الشخصية
                             </h5>
                             
                             <div class="row g-3 mb-4">
@@ -84,47 +84,42 @@
                                         <div class="text-danger small mt-1">{{ form.phone_number.errors.0 }}</div>
                                     {% endif %}
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-12">
                                     <label class="form-label text-white-50">الجنس</label>
                                     {{ form.gender }}
                                     {% if form.gender.errors %}
                                         <div class="text-danger small mt-1">{{ form.gender.errors.0 }}</div>
                                     {% endif %}
                                 </div>
+                            </div>
+
+                            <h5 class="text-vibrant-green mb-4 border-bottom border-secondary pb-2 mt-5">
+                                <i class="fa-solid fa-briefcase me-2"></i>البيانات الوظيفية والمالية
+                            </h5>
+                            
+                            <div class="row g-3 mb-5">
                                 <div class="col-md-6">
-                                    <label class="form-label text-white-50">تاريخ الميلاد</label>
-                                    {{ form.birth_date }}
-                                    {% if form.birth_date.errors %}
-                                        <div class="text-danger small mt-1">{{ form.birth_date.errors.0 }}</div>
+                                    <label class="form-label text-white-50">الراتب الشهري (ج.م)</label>
+                                    {{ form.salary }}
+                                    {% if form.salary.errors %}
+                                        <div class="text-danger small mt-1">{{ form.salary.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label text-white-50">تاريخ التعيين</label>
+                                    {{ form.hire_date }}
+                                    {% if form.hire_date.errors %}
+                                        <div class="text-danger small mt-1">{{ form.hire_date.errors.0 }}</div>
                                     {% endif %}
                                 </div>
                             </div>
 
-                            <h5 class="text-vibrant-green mb-4 border-bottom border-secondary pb-2">
-                                <i class="fa-solid fa-map-location-dot me-2"></i>معلومات إضافية
-                            </h5>
-                            
-                            <div class="mb-4">
-                                <label class="form-label text-white-50">العنوان</label>
-                                {{ form.address }}
-                                {% if form.address.errors %}
-                                    <div class="text-danger small mt-1">{{ form.address.errors.0 }}</div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="mb-5">
-                                <label class="form-label text-white-50">ملاحظات طبية أولية</label>
-                                {{ form.notes }}
-                                {% if form.notes.errors %}
-                                    <div class="text-danger small mt-1">{{ form.notes.errors.0 }}</div>
-                                {% endif %}
-                            </div>
-
                             <div class="d-grid gap-2">
                                 <button type="submit" class="btn btn-primary btn-premium py-3 fs-5">
-                                    <i class="fa-solid fa-save ms-2"></i>حفظ وإنشاء كلمة مرور
+                                    <i class="fa-solid fa-save ms-2"></i>حفظ وإنشاء الحساب
                                 </button>
-                                <a href="{% url 'dashboard:dashboard_router' %}" class="btn btn-outline-light py-2">إلغاء</a>
+                                <a href="{% url 'dashboard:admin_dashboard' %}" class="btn btn-outline-light py-2">إلغاء</a>
                             </div>
                         </form>
                     </div>
@@ -142,7 +137,6 @@
         copyText.setSelectionRange(0, 99999);
         navigator.clipboard.writeText(copyText.value);
         
-        // Optional: show some feedback
         alert("تم نسخ كلمة المرور: " + copyText.value);
     }
 </script>

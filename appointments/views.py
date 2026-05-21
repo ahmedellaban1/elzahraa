@@ -5,18 +5,27 @@ from django.template.loader import render_to_string
 from .models import Appointment, PrescriptionItem
 from medicines.models import Medicine
 from django.views.decorators.http import require_POST
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib import messages
+from etc.choices import (
+    MEDICINE_DOSAGE_UNIT_CHOICES,
+    MEDICINE_FREQUENCY_CHOICES,
+    MEDICINE_DURATION_UNIT_CHOICES,
+    MEDICINE_ROUTE_CHOICES,
+    MEDICINE_NOTES
+)
 
 from django.utils.dateparse import parse_datetime
 
 from django.utils import timezone
 
 @login_required
+@permission_required('appointments.view_appointment', raise_exception=True)
 def index(request):
     return render(request, 'appointments/index.html', {'page_title': 'إدارة المواعيد'})
 
 @login_required
+@permission_required('appointments.view_appointment', raise_exception=True)
 def list_appointments(request):
     status = request.GET.get('status', 'all')
     page_number = request.GET.get('page', 1)
@@ -47,6 +56,7 @@ def list_appointments(request):
 
 @require_POST
 @login_required
+@permission_required('appointments.add_appointment', raise_exception=True)
 def create_appointment(request):
     try:
         patient_id = request.POST.get('patient')
@@ -78,6 +88,7 @@ def create_appointment(request):
 
 
 @login_required
+@permission_required('appointments.add_prescriptionitem', raise_exception=True)
 def add_prescription(request, appointment_id):
     # Check if user is a doctor
     if not hasattr(request.user, 'doctor'):
@@ -119,11 +130,17 @@ def add_prescription(request, appointment_id):
         'appointment': appointment,
         'medicines': Medicine.objects.filter(is_active=True),
         'prescriptions': appointment.prescription_items.all().order_by('-created_at'),
+        'dosage_units': MEDICINE_DOSAGE_UNIT_CHOICES,
+        'frequencies': MEDICINE_FREQUENCY_CHOICES,
+        'duration_units': MEDICINE_DURATION_UNIT_CHOICES,
+        'routes': MEDICINE_ROUTE_CHOICES,
+        'notes_choices': MEDICINE_NOTES,
     }
     return render(request, 'appointments/add_prescription.html', context)
 
 @require_POST
 @login_required
+@permission_required('appointments.change_appointment', raise_exception=True)
 def update_appointment_status(request, pk):
     try:
         appointment = Appointment.objects.get(pk=pk)
@@ -137,3 +154,37 @@ def update_appointment_status(request, pk):
         return JsonResponse({'status': 'error', 'message': 'الموعد غير موجود'}, status=404)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+@require_POST
+@login_required
+@permission_required('appointments.change_appointment', raise_exception=True)
+def save_appointment_notes(request, appointment_id):
+    appointment = get_object_or_404(Appointment, pk=appointment_id)
+    
+    # Ensure this appointment belongs to the doctor (if user is a doctor)
+    if hasattr(request.user, 'doctor') and appointment.doctor != request.user.doctor:
+        return render(request, '403.html', status=403)
+        
+    notes = request.POST.get('notes', '')
+    appointment.notes = notes
+    appointment.save()
+    messages.success(request, "تم حفظ الملاحظات الطبية بنجاح.")
+    return redirect('appointments:add_prescription', appointment_id=appointment.id)
+
+
+@login_required
+@permission_required('appointments.view_prescriptionitem', raise_exception=True)
+def print_prescription(request, appointment_id):
+    appointment = get_object_or_404(Appointment, pk=appointment_id)
+    
+    # Ensure this appointment belongs to the doctor (if user is a doctor)
+    if hasattr(request.user, 'doctor') and appointment.doctor != request.user.doctor:
+        return render(request, '403.html', status=403)
+        
+    context = {
+        'page_title': f'طباعة وصفة: {appointment.patient.user.get_full_name()}',
+        'appointment': appointment,
+        'prescriptions': appointment.prescription_items.all().order_by('created_at'),
+    }
+    return render(request, 'appointments/print_prescription.html', context)

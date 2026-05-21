@@ -2,13 +2,8 @@
 {% load static %}
 
 {% block extra_css %}
-<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
-<style>
-    .ts-control { background-color: rgba(12, 55, 32, 0.2) !important; color: white !important; border-radius: 10px !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; }
-    .ts-dropdown { background: #151f1c !important; color: white !important; }
-    .ts-dropdown .active { background: var(--vibrant-green) !important; }
-    .ts-dropdown .option { color: white !important; }
-</style>
+<link href="{% static 'vendor/tom-select/css/tom-select.bootstrap5.min.css' %}" rel="stylesheet">
+<link href="{% static 'summernote/summernote-lite.min.css' %}" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
@@ -28,11 +23,8 @@
                     {% csrf_token %}
                     <div class="mb-3">
                         <label class="form-label">الدواء</label>
-                        <select name="medicine" id="medicine-select" required>
-                            <option value="">اختر الدواء...</option>
-                            {% for medicine in medicines %}
-                                <option value="{{ medicine.id }}">{{ medicine.trade_name }} ({{ medicine.scientific_name }})</option>
-                            {% endfor %}
+                        <select name="medicine" id="medicine-select" class="prescription-select" required>
+                            <option value=""></option>
                         </select>
                     </div>
                     
@@ -44,11 +36,10 @@
                         <div class="col-md-6">
                             <label class="form-label">الوحدة</label>
                             <select name="dosage_unit" class="form-control" required>
-                                <option value="pill">قرص</option>
-                                <option value="spoon">ملعقة</option>
-                                <option value="ml">مل</option>
-                                <option value="drop">نقطة</option>
-                                <option value="injection">حقنة</option>
+                                <option value="" disabled selected>اختر الوحدة</option>
+                                {% for value, label in dosage_units %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
                             </select>
                         </div>
                     </div>
@@ -56,13 +47,10 @@
                     <div class="mb-3 mt-3">
                         <label class="form-label">التكرار</label>
                         <select name="frequency" class="form-control" required>
-                            <option value="once">مرة واحدة</option>
-                            <option value="twice">مرتين يومياً</option>
-                            <option value="thrice">3 مرات يومياً</option>
-                            <option value="four">4 مرات يومياً</option>
-                            <option value="every_8">كل 8 ساعات</option>
-                            <option value="every_12">كل 12 ساعة</option>
-                            <option value="as_needed">عند اللزوم</option>
+                            <option value="" disabled selected>اختر التكرار</option>
+                            {% for value, label in frequencies %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                     
@@ -74,9 +62,10 @@
                         <div class="col-md-6">
                             <label class="form-label">الوحدة</label>
                             <select name="duration_unit" class="form-control" required>
-                                <option value="days">أيام</option>
-                                <option value="weeks">أسابيع</option>
-                                <option value="months">شهور</option>
+                                <option value="" disabled selected>اختر الوحدة</option>
+                                {% for value, label in duration_units %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
                             </select>
                         </div>
                     </div>
@@ -84,22 +73,20 @@
                     <div class="mb-3 mt-3">
                         <label class="form-label">طريقة الاستخدام</label>
                         <select name="route" class="form-control" required>
-                            <option value="oral">عن طريق الفم</option>
-                            <option value="injection">حقن</option>
-                            <option value="topical">دهان سطحي</option>
-                            <option value="eye_drops">قطرة عين</option>
-                            <option value="nasal">بخاخ أنف</option>
+                            <option value="" disabled selected>اختر طريقة الاستخدام</option>
+                            {% for value, label in routes %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                     
                     <div class="mb-3">
                         <label class="form-label">ملاحظات</label>
                         <select name="notes" class="form-control">
-                            <option value="">بدون ملاحظات</option>
-                            <option value="before_food">قبل الأكل</option>
-                            <option value="after_food">بعد الأكل</option>
-                            <option value="with_food">مع الأكل</option>
-                            <option value="on_empty_stomach">على الريق</option>
+                            <option value="" selected>بدون ملاحظات</option>
+                            {% for value, label in notes_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                     
@@ -133,6 +120,9 @@
                             <tr>
                                 <td class="fw-bold">
                                     {{ item.medicine.trade_name }}
+                                    {% if item.medicine.concentration %}
+                                        <small class="text-vibrant-green fw-bold">({{ item.medicine.concentration }} {{ item.medicine.get_concentration_unit_display }})</small>
+                                    {% endif %}
                                     <br><small class="text-muted">{{ item.medicine.scientific_name }}</small>
                                 </td>
                                 <td>
@@ -155,11 +145,31 @@
                 
                 {% if prescriptions %}
                 <div class="mt-4 text-center">
-                    <button class="btn btn-outline-light px-5" onclick="window.print()">
-                        <i class="fa-solid fa-print me-2"></i> طباعة الوصفة
-                    </button>
+                    <a href="{% url 'appointments:print_prescription' appointment.id %}" target="_blank" class="btn btn-outline-light px-5">
+                        <i class="fa-solid fa-print me-2"></i> طباعة الوصفة (PDF)
+                    </a>
                 </div>
                 {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Doctor's Notes (Summernote Editor) -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="premium-table-container p-4">
+                <h4 class="text-white mb-4">
+                    <i class="fa-solid fa-file-signature text-vibrant-green me-2"></i>التقرير الطبي / الملاحظات الطبية
+                </h4>
+                <form method="POST" action="{% url 'appointments:save_notes' appointment.id %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <textarea id="summernote" name="notes">{{ appointment.notes|default_if_none:"" }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-premium px-5 py-2">
+                        <i class="fa-solid fa-save me-2"></i> حفظ الملاحظات الطبية
+                    </button>
+                </form>
             </div>
         </div>
     </div>
@@ -167,14 +177,57 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+<!-- jQuery (required for Summernote) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Tom Select JS -->
+<script src="{% static 'vendor/tom-select/js/tom-select.complete.min.js' %}"></script>
+<!-- Summernote JS -->
+<script src="{% static 'summernote/summernote-lite.min.js' %}"></script>
 <script>
     new TomSelect("#medicine-select", {
+        valueField: 'id',
+        labelField: 'text',
+        searchField: 'text',
+        load: function(query, callback) {
+            var url = "{% url 'medicines:search_medicines' %}?q=" + encodeURIComponent(query);
+            fetch(url)
+                .then(response => response.json())
+                .then(json => {
+                    callback(json.results);
+                }).catch(() => {
+                    callback();
+                });
+        },
+        placeholder: "البحث عن الدواء بالاسم التجاري أو العلمي...",
         create: false,
-        sortField: {
-            field: "text",
-            direction: "asc"
+        render: {
+            option: function(data, escape) {
+                return '<div class="py-2 px-3 border-bottom border-secondary border-opacity-25">' +
+                    '<div class="text-white fw-bold">' + escape(data.text) + '</div>' +
+                '</div>';
+            },
+            item: function(data, escape) {
+                return '<div class="text-white">' + escape(data.text) + '</div>';
+            }
         }
+    });
+
+    $(document).ready(function() {
+        $('#summernote').summernote({
+            placeholder: 'اكتب التقرير الطبي أو الملاحظات هنا...',
+            tabsize: 2,
+            height: 250,
+            lang: 'ar-AR',
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'underline', 'clear']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['table', ['table']],
+                ['insert', ['link', 'picture', 'video']],
+                ['view', ['fullscreen', 'codeview', 'help']]
+            ]
+        });
     });
 </script>
 {% endblock %}

@@ -28,7 +28,6 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto align-items-center">
                     <li class="nav-item"><a class="nav-link" href="{% url 'services:list' %}">الخدمات</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/#doctors">الأطباء</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'appointments:index' %}">المواعيد</a></li>
                     {% if user.is_authenticated and user.role == 'admin' %}
                         <li class="nav-item"><a class="nav-link text-vibrant-green fw-bold" href="{% url 'dashboard:admin_dashboard' %}">لوحة التحكم</a></li>
