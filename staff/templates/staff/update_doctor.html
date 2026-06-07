@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card card-premium shadow-lg border-0 overflow-hidden" style="background: rgba(24, 24, 24, 0.9); backdrop-filter: blur(10px); border-radius: 20px;">
+                <div class="card-header bg-transparent border-0 p-4 pb-0 text-center">
+                    <h2 class="text-white fw-bold mb-0">تعديل بيانات الطبيب</h2>
+                    <p class="text-white-50 mt-2">قم بتعديل بيانات الطبيب وتفاصيل التعاقد المالي</p>
+                </div>
+                <div class="card-body p-4 p-md-5">
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <h5 class="text-vibrant-green mb-4 border-bottom border-secondary pb-2">
+                            <i class="fa-solid fa-user-doctor me-2"></i>البيانات الشخصية
+                        </h5>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label text-white-50">الاسم الأول</label>
+                                {{ form.first_name }}
+                                {% if form.first_name.errors %}
+                                    <div class="text-danger small mt-1">{{ form.first_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-white-50">اسم العائلة</label>
+                                {{ form.last_name }}
+                                {% if form.last_name.errors %}
+                                    <div class="text-danger small mt-1">{{ form.last_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-white-50">اسم المستخدم</label>
+                                {{ form.username }}
+                                {% if form.username.errors %}
+                                    <div class="text-danger small mt-1">{{ form.username.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-white-50">رقم الهاتف</label>
+                                {{ form.phone_number }}
+                                {% if form.phone_number.errors %}
+                                    <div class="text-danger small mt-1">{{ form.phone_number.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-white-50">الجنس</label>
+                                {{ form.gender }}
+                                {% if form.gender.errors %}
+                                    <div class="text-danger small mt-1">{{ form.gender.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-white-50">التخصص</label>
+                                {{ form.specialization }}
+                                {% if form.specialization.errors %}
+                                    <div class="text-danger small mt-1">{{ form.specialization.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <h5 class="text-vibrant-green mb-4 border-bottom border-secondary pb-2 mt-5">
+                            <i class="fa-solid fa-file-contract me-2"></i>تفاصيل التعاقد المالي
+                        </h5>
+                        
+                        <div class="row g-3 mb-5">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label text-white-50">نوع التعاقد</label>
+                                {{ form.examination_type }}
+                                {% if form.examination_type.errors %}
+                                    <div class="text-danger small mt-1">{{ form.examination_type.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6" id="percentage_container">
+                                <label class="form-label text-white-50">قيمة النسبة المئوية (%)</label>
+                                {{ form.percentage_value }}
+                                {% if form.percentage_value.errors %}
+                                    <div class="text-danger small mt-1">{{ form.percentage_value.errors.0 }}</div>
+                                {% endif %}
+                                <small class="text-white-50 opacity-75">مثال: 40 للطبيب، 60 للعيادة</small>
+                            </div>
+                            
+                            <div class="col-md-6" id="price_container">
+                                <label class="form-label text-white-50">المبلغ الثابت (ج.م)</label>
+                                {{ form.price_value }}
+                                {% if form.price_value.errors %}
+                                    <div class="text-danger small mt-1">{{ form.price_value.errors.0 }}</div>
+                                {% endif %}
+                                <small class="text-white-50 opacity-75">المبلغ المقتطع للطبيب لكل كشف</small>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-premium py-3 fs-5">
+                                <i class="fa-solid fa-save ms-2"></i> حفظ التعديلات
+                            </button>
+                            <a href="{% url 'staff:doctor_detail' doctor.id %}" class="btn btn-outline-light py-2">إلغاء</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const examTypeSelect = document.getElementById('{{ form.examination_type.id_for_label }}');
+        const percentageContainer = document.getElementById('percentage_container');
+        const priceContainer = document.getElementById('price_container');
+
+        function toggleFields() {
+            if (!examTypeSelect) return;
+            const val = examTypeSelect.value;
+            if (val === 'percentage') {
+                percentageContainer.style.display = 'block';
+                priceContainer.style.display = 'none';
+            } else if (val === 'time_share') {
+                percentageContainer.style.display = 'none';
+                priceContainer.style.display = 'block';
+            } else {
+                percentageContainer.style.display = 'block';
+                priceContainer.style.display = 'block';
+            }
+        }
+
+        if(examTypeSelect) {
+            examTypeSelect.addEventListener('change', toggleFields);
+            toggleFields(); // Initial state
+        }
+    });
+</script>
+{% endblock %}

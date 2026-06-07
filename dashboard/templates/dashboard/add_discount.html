@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="premium-card p-4">
+                <h4 class="form-section-title mb-4 text-white">
+                    <i class="fa-solid fa-tags text-vibrant-green"></i>
+                    {% if appointment %}
+                        إضافة خصم للموعد رقم #{{ appointment.session_number }}
+                    {% else %}
+                        إضافة خصم لخدمة: {{ service_record.service.name }}
+                    {% endif %}
+                </h4>
+                
+                <div class="alert alert-info mb-4" style="background: rgba(14, 165, 233, 0.1); border-color: rgba(14, 165, 233, 0.3); color: #7dd3fc;">
+                    {% if appointment %}
+                        <strong>المريض:</strong> {{ appointment.patient }} <br>
+                        <strong>الطبيب:</strong> {{ appointment.doctor }} <br>
+                        <strong>تكلفة الموعد الحالية:</strong> <span id="currentCost">{{ appointment.cost }}</span> ج.م
+                    {% else %}
+                        <strong>المريض:</strong> {{ service_record.patient }} <br>
+                        <strong>الطبيب:</strong> {{ service_record.doctor }} <br>
+                        <strong>تكلفة الخدمة الأساسية:</strong> <span id="currentCost">{{ service_record.service.price }}</span> ج.م
+                    {% endif %}
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4">
+                        <label class="form-label text-white">قيمة الخصم (ج.م)</label>
+                        <input type="number" class="form-control premium-input" name="discount_amount" id="discountAmount" required min="1" max="{% if appointment %}{{ appointment.cost }}{% else %}{{ service_record.service.price }}{% endif %}" step="0.5">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label text-white">المبلغ النهائي بعد الخصم</label>
+                        <input type="text" class="form-control premium-input bg-dark" id="finalAmount" readonly disabled>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label text-white">سبب الخصم (اختياري)</label>
+                        <textarea class="form-control premium-input" name="reason" rows="3" placeholder="مثال: خصم خاص للحالة..."></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        {% if appointment %}
+                            <a href="{% url 'appointments:index' %}" class="btn btn-outline-light px-4">إلغاء</a>
+                        {% else %}
+                            <a href="{% url 'patients:detail' service_record.patient.id %}" class="btn btn-outline-light px-4">إلغاء</a>
+                        {% endif %}
+                        <button type="submit" class="btn btn-premium px-4">
+                            <i class="fa-solid fa-check me-2"></i> تأكيد الخصم
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const cost = parseFloat('{% if appointment %}{{ appointment.cost }}{% else %}{{ service_record.service.price }}{% endif %}') || 0;
+        const discountInput = document.getElementById('discountAmount');
+        const finalInput = document.getElementById('finalAmount');
+
+        discountInput.addEventListener('input', function() {
+            const discount = parseFloat(this.value) || 0;
+            if (discount >= 0 && discount <= cost) {
+                finalInput.value = (cost - discount) + ' ج.م';
+            } else {
+                finalInput.value = 'قيمة الخصم غير صالحة';
+            }
+        });
+    });
+</script>
+{% endblock %}

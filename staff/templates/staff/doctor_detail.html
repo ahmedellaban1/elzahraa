@@ -9,30 +9,40 @@
 {% block content %}
 <div class="container py-5">
     <div class="mb-4 d-flex justify-content-between align-items-center">
-        <a href="{% url 'dashboard:unified_search' %}?type=doctor" class="text-vibrant-green text-decoration-none fw-bold">
+        <a href="{% url 'dashboard:unified_search' %}?type=doctor"
+            class="text-vibrant-green text-decoration-none fw-bold">
             <i class="fa-solid fa-arrow-right me-2"></i> العودة للبحث
         </a>
-        
-        {% if user.role in 'admin,receptionist' or user.is_superuser %}
-        <a href="{% url 'staff:reset_doctor_password' doctor.id %}" class="btn btn-outline-info btn-sm px-3" onclick="return confirm('هل أنت متأكد من إعادة تعيين كلمة المرور؟ سيتم توليد كلمة مرور جديدة فوراً.')">
-            <i class="fa-solid fa-key me-1"></i> تعيين كلمة المرور
-        </a>
-        {% endif %}
+
+        <div class="d-flex gap-2">
+            {% if user.role == 'admin' or user.is_superuser %}
+            <a href="{% url 'staff:update_doctor' doctor.id %}" class="btn btn-outline-warning btn-sm px-3">
+                <i class="fa-solid fa-user-gear me-1"></i> تعديل البيانات
+            </a>
+            {% endif %}
+            {% if user.role in 'admin,receptionist' or user.is_superuser %}
+            <a href="{% url 'staff:reset_doctor_password' doctor.id %}" class="btn btn-outline-info btn-sm px-3"
+                onclick="return confirm('هل أنت متأكد من إعادة تعيين كلمة المرور؟ سيتم توليد كلمة مرور جديدة فوراً.')">
+                <i class="fa-solid fa-key me-1"></i> تعيين كلمة المرور
+            </a>
+            {% endif %}
+        </div>
     </div>
 
     <!-- Header & Period Filter -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-5 gap-3 border-bottom border-secondary pb-4">
+    <div
+        class="d-flex flex-wrap justify-content-between align-items-center mb-5 gap-3 border-bottom border-secondary pb-4">
         <div>
             <h2 class="fw-bold text-white mb-1">التقرير المالي للطبيب</h2>
-            <p class="text-muted mb-0">متابعة الإيرادات والتحليلات المالية والعمليات للطبيب د. {{ doctor.user.get_full_name }}.</p>
+            <p class="text-muted mb-0">متابعة الإيرادات والتحليلات المالية والعمليات للطبيب د. {{doctor.user.get_full_name }}.</p>
         </div>
-        
+
         <form method="GET" class="d-flex align-items-center gap-3">
             <div class="date-range-container d-flex align-items-center gap-2">
                 <i class="fa-solid fa-calendar-range text-vibrant-green"></i>
-                <input type="text" id="dateRangePicker" name="date_range" 
-                       class="form-control bg-transparent border-0 text-white text-center" 
-                       style="width: 250px;" placeholder="اختر الفترة الزمنية">
+                <input type="text" id="dateRangePicker" name="date_range"
+                    class="form-control bg-transparent border-0 text-white text-center" style="width: 250px;"
+                    placeholder="اختر الفترة الزمنية">
                 <input type="hidden" name="start_date" id="start_date" value="{{ start_date }}">
                 <input type="hidden" name="end_date" id="end_date" value="{{ end_date }}">
             </div>
@@ -53,7 +63,8 @@
                     <i class="fa-solid fa-coins"></i>
                 </div>
                 <h6 class="text-muted small text-uppercase">إجمالي الإيرادات</h6>
-                <h3 class="fw-bold text-white mb-0">{{ total_revenue|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
+                <h3 class="fw-bold text-white mb-0">{{ total_revenue|floatformat:2 }} <small
+                        class="fs-6 text-muted">ج.م</small></h3>
             </div>
         </div>
         <div class="col-md-3">
@@ -62,7 +73,8 @@
                     <i class="fa-solid fa-user-md"></i>
                 </div>
                 <h6 class="text-muted small text-uppercase">نصيب الطبيب</h6>
-                <h3 class="fw-bold text-info mb-0">{{ doctor_share|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
+                <h3 class="fw-bold text-info mb-0">{{ doctor_share|floatformat:2 }} <small
+                        class="fs-6 text-muted">ج.م</small></h3>
             </div>
         </div>
         <div class="col-md-3">
@@ -71,7 +83,8 @@
                     <i class="fa-solid fa-hospital"></i>
                 </div>
                 <h6 class="text-muted small text-uppercase">صافي العيادة</h6>
-                <h3 class="fw-bold text-vibrant-green mb-0">{{ clinic_share|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
+                <h3 class="fw-bold text-vibrant-green mb-0">{{ clinic_share|floatformat:2 }} <small
+                        class="fs-6 text-muted">ج.م</small></h3>
             </div>
         </div>
         <div class="col-md-3">
@@ -80,7 +93,8 @@
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <h6 class="text-muted small text-uppercase">عدد العمليات الكلي</h6>
-                <h3 class="fw-bold text-white mb-0">{{ app_count|add:service_count }} <small class="fs-6 text-muted">عملية</small></h3>
+                <h3 class="fw-bold text-white mb-0">{{ app_count|add:service_count }} <small
+                        class="fs-6 text-muted">عملية</small></h3>
                 <span class="badge bg-primary mt-2">كشوفات: {{ app_count }}</span>
                 <span class="badge bg-success mt-2">خدمات: {{ service_count }}</span>
             </div>
@@ -90,7 +104,8 @@
     {% if new_password %}
     <!-- Password Display Alert -->
     <div class="mb-4">
-        <div class="alert alert-warning border-warning shadow-sm d-flex align-items-center justify-content-between mb-0" style="background: rgba(255, 193, 7, 0.1); border-radius: 15px;">
+        <div class="alert alert-warning border-warning shadow-sm d-flex align-items-center justify-content-between mb-0"
+            style="background: rgba(255, 193, 7, 0.1); border-radius: 15px;">
             <div>
                 <i class="fa-solid fa-shield-halved me-2 text-warning fs-4"></i>
                 <span class="text-white">كلمة المرور الجديدة: </span>
@@ -115,15 +130,15 @@
         <div class="col-lg-4">
             <div class="premium-table-container p-4 text-center mb-4">
                 <div class="mb-4">
-                    <div class="rounded-circle bg-vibrant-green d-flex justify-content-center align-items-center mx-auto" 
-                         style="width: 100px; height: 100px; font-size: 2.5rem; color: #1a1a1a;">
+                    <div class="rounded-circle bg-vibrant-green d-flex justify-content-center align-items-center mx-auto"
+                        style="width: 100px; height: 100px; font-size: 2.5rem; color: #1a1a1a;">
                         <i class="fa-solid fa-user-md"></i>
                     </div>
                 </div>
                 <h3 class="text-white fw-bold mb-1">{{ doctor.user.get_full_name }}</h3>
                 <p class="text-muted mb-1"><i class="fa-solid fa-user me-1"></i> {{ doctor.user.username }}</p>
                 <p class="text-vibrant-green mb-3 fs-5">{{ doctor.specialization|default:"غير محدد" }}</p>
-                
+
                 <div class="d-flex justify-content-center gap-2 mb-4">
                     <span class="badge bg-dark-green border border-success p-2">طبيب</span>
                 </div>
@@ -131,11 +146,13 @@
                 <div class="text-start">
                     <div class="mb-3 border-bottom border-secondary pb-2">
                         <small class="text-muted d-block mb-1">رقم الهاتف</small>
-                        <span class="text-white"><i class="fa-solid fa-phone text-info me-2"></i>{{ doctor.user.phone_number }}</span>
+                        <span class="text-white"><i class="fa-solid fa-phone text-info me-2"></i>{{
+                            doctor.user.phone_number }}</span>
                     </div>
                     <div class="mb-3 border-bottom border-secondary pb-2">
                         <small class="text-muted d-block mb-1">تاريخ الانضمام</small>
-                        <span class="text-white"><i class="fa-solid fa-calendar text-info me-2"></i>{{ doctor.user.date_joined|date:"Y-m-d" }}</span>
+                        <span class="text-white"><i class="fa-solid fa-calendar text-info me-2"></i>{{
+                            doctor.user.date_joined|date:"Y-m-d" }}</span>
                     </div>
                 </div>
             </div>
@@ -172,7 +189,7 @@
                         <i class="fa-solid fa-calendar-check text-info me-2"></i>أحدث المواعيد
                     </h5>
                 </div>
-                
+
                 <div class="table-responsive">
                     <table class="premium-table text-white">
                         <thead>
@@ -180,6 +197,8 @@
                                 <th>التاريخ</th>
                                 <th>المريض</th>
                                 <th>التكلفة</th>
+                                <th class="text-info">نصيب الطبيب</th>
+                                <th class="text-vibrant-green">نصيب العيادة</th>
                                 <th>الحالة</th>
                             </tr>
                         </thead>
@@ -188,20 +207,27 @@
                             <tr>
                                 <td>{{ appt.date|date:"Y-m-d g:i A" }}</td>
                                 <td>
-                                    <a href="{% url 'patients:detail' appt.patient.pk %}" class="text-info text-decoration-none fw-bold">
+                                    <a href="{% url 'patients:detail' appt.patient.pk %}"
+                                        class="text-info text-decoration-none fw-bold">
                                         {{ appt.patient.user.get_full_name }}
                                     </a>
                                 </td>
                                 <td><span class="text-success fw-bold">{{ appt.cost }} جنيه</span></td>
+                                <td><span class="text-info fw-bold">{{ appt.doctor_money|floatformat:2 }} جنيه</span>
+                                </td>
+                                <td><span class="text-vibrant-green fw-bold">{{ appt.clinic_money|floatformat:2 }}
+                                        جنيه</span></td>
                                 <td>
                                     {% if appt.status == 'pending' %}
-                                        <span class="badge bg-warning text-dark"><i class="fa-regular fa-clock me-1"></i>قيد الانتظار</span>
+                                    <span class="badge bg-warning text-dark"><i class="fa-regular fa-clock me-1"></i>قيد
+                                        الانتظار</span>
                                     {% elif appt.status == 'confirmed' %}
-                                        <span class="badge bg-primary"><i class="fa-solid fa-check me-1"></i>مؤكد</span>
+                                    <span class="badge bg-primary"><i class="fa-solid fa-check me-1"></i>مؤكد</span>
                                     {% elif appt.status == 'completed' %}
-                                        <span class="badge bg-success"><i class="fa-solid fa-check-double me-1"></i>مكتمل</span>
+                                    <span class="badge bg-success"><i
+                                            class="fa-solid fa-check-double me-1"></i>مكتمل</span>
                                     {% elif appt.status == 'cancelled' %}
-                                        <span class="badge bg-danger"><i class="fa-solid fa-xmark me-1"></i>ملغي</span>
+                                    <span class="badge bg-danger"><i class="fa-solid fa-xmark me-1"></i>ملغي</span>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -222,7 +248,7 @@
                         <i class="fa-solid fa-stethoscope text-primary me-2"></i>أحدث الخدمات المقدمة
                     </h5>
                 </div>
-                
+
                 <div class="table-responsive">
                     <table class="premium-table text-white">
                         <thead>
@@ -239,13 +265,15 @@
                             <tr>
                                 <td>{{ record.created_at|date:"Y-m-d" }}</td>
                                 <td>
-                                    <a href="{% url 'patients:detail' record.patient.pk %}" class="text-info text-decoration-none fw-bold">
+                                    <a href="{% url 'patients:detail' record.patient.pk %}"
+                                        class="text-info text-decoration-none fw-bold">
                                         {{ record.patient.user.get_full_name }}
                                     </a>
                                 </td>
                                 <td>{{ record.service.name }}</td>
                                 <td>{{ record.service.price }} جنيه</td>
-                                <td><span class="text-warning fw-bold">{{ record.doctor_amount|floatformat:2 }} جنيه</span></td>
+                                <td><span class="text-warning fw-bold">{{ record.doctor_money|floatformat:2 }}
+                                        جنيه</span></td>
                             </tr>
                             {% empty %}
                             <tr>
@@ -256,7 +284,7 @@
                     </table>
                 </div>
             </div>
-            
+
         </div>
     </div>
 </div>
@@ -265,10 +293,10 @@
 {% block extra_js %}
 <script src="{% static 'vendor/flatpickr/flatpickr.min.js' %}"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const startDate = "{{ start_date }}";
         const endDate = "{{ end_date }}";
-        
+
         flatpickr("#dateRangePicker", {
             mode: "range",
             dateFormat: "Y-m-d",
@@ -276,7 +304,7 @@
             altFormat: "j / n / Y",
             defaultDate: [startDate, endDate],
             theme: "dark",
-            onClose: function(selectedDates, dateStr, instance) {
+            onClose: function (selectedDates, dateStr, instance) {
                 if (selectedDates.length === 2) {
                     document.getElementById('start_date').value = instance.formatDate(selectedDates[0], "Y-m-d");
                     document.getElementById('end_date').value = instance.formatDate(selectedDates[1], "Y-m-d");

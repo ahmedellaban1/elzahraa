@@ -37,6 +37,7 @@
                     <select id="doctorSelect" name="doctor" placeholder="ابحث عن طبيب بالاسم أو التخصص..."
                         required></select>
                 </div>
+
                 <div class="col-md-4">
                     <label class="form-label">التاريخ والوقت</label>
                     <input type="datetime-local" class="form-control" name="date" required>
@@ -51,12 +52,31 @@
                     </select>
                 </div>
                 <div class="col-md-4">
+                    <label class="form-label">نوع الموعد</label>
+                    <select class="form-control" name="type">
+                        <option value="examination">كشف</option>
+                        <option value="follow_up">متابعة</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
                     <label class="form-label">رقم الغرفة</label>
                     <input type="number" class="form-control" name="room_number" placeholder="رقم الغرفة">
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">التكلفة (ج.م)</label>
-                    <input type="number" step="0.01" class="form-control" name="cost" placeholder="0.00" required>
+                    <input type="number" step="0.01" class="form-control" id="costInput" name="cost" placeholder="0.00"
+                        required style="transition: background 0.3s;">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">نصيب الطبيب (ج.م)</label>
+                    <input type="number" step="0.01" class="form-control" id="doctorMoneyInput" name="doctor_money"
+                        placeholder="0.00" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">نصيب العيادة (ج.م)</label>
+                    <input type="number" step="0.01" class="form-control" id="clinicMoneyInput" name="clinic_money"
+                        placeholder="0.00" disabled
+                        style="background: rgba(12, 55, 32, 0.2) !important; color: white !important; opacity: 1; cursor: not-allowed; border-color: rgba(255,255,255,0.08);">
                 </div>
                 <div class="col-12 text-start mt-4">
                     <button type="submit" class="btn btn-premium px-5" id="submitBtn">
@@ -81,7 +101,7 @@
             style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
             <label class="text-white-50 small mb-0 ms-2">بحث بالتاريخ:</label>
             <input type="text" id="dateFilterInput"
-                class="form-control form-control-sm bg-dark text-white border-0 rounded-3 text-center" 
+                class="form-control form-control-sm bg-dark text-white border-0 rounded-3 text-center"
                 style="width: 150px;" placeholder="اختر التاريخ">
             <button id="dateSearchBtn" class="btn btn-sm btn-premium py-1 px-3">
                 <i class="fa-solid fa-search"></i>
@@ -98,6 +118,7 @@
                     <th class="text-nowrap" style="width: 5%">رقم الغرفة</th>
                     <th>المريض</th>
                     <th>الطبيب</th>
+                    <th class="text-nowrap" style="width: 8%">نوع</th>
                     <th class="text-nowrap" style="width: 10%">الحالة</th>
                     <th class="text-nowrap" style="width: 15%">إجراءات</th>
                 </tr>
@@ -153,15 +174,16 @@
         }
     });
 
+
     // Refresh Table AJAX
     function refreshTable(page = 1, status = 'all') {
         currentStatus = status;
         currentPage = page;
-        
+
         // Get the date from flatpickr in the format Django expects (YYYY-MM-DD)
         const fpInstance = document.querySelector("#dateFilterInput")._flatpickr;
         const dateFilter = fpInstance ? fpInstance.formatDate(fpInstance.selectedDates[0], "Y-m-d") : "";
-        
+
         const tableBody = document.getElementById('appointmentsTableBody');
         tableBody.style.opacity = '0.5';
 
@@ -221,11 +243,30 @@
         dateFormat: "d / m / Y",
         defaultDate: "today",
         theme: "dark",
-        onChange: function(selectedDates, dateStr, instance) {
+        onChange: function (selectedDates, dateStr, instance) {
             // No need to trigger here if they want to use the search button, 
             // but usually auto-refresh is better.
         }
     });
+
+    // Auto-calculate Clinic Money
+    const costInput = document.getElementById('costInput');
+    const doctorMoneyInput = document.getElementById('doctorMoneyInput');
+    const clinicMoneyInput = document.getElementById('clinicMoneyInput');
+
+    function calculateClinicMoney() {
+        if (doctorMoneyInput.value.trim() === '') {
+            clinicMoneyInput.value = '';
+            return;
+        }
+        const cost = parseFloat(costInput.value) || 0;
+        const doctorMoney = parseFloat(doctorMoneyInput.value) || 0;
+        const clinicMoney = Math.max(0, cost - doctorMoney);
+        clinicMoneyInput.value = clinicMoney.toFixed(2);
+    }
+
+    costInput.addEventListener('input', calculateClinicMoney);
+    doctorMoneyInput.addEventListener('input', calculateClinicMoney);
 
     // Form Submission AJAX
     document.getElementById('appointmentForm').addEventListener('submit', function (e) {
@@ -236,7 +277,10 @@
         submitBtn.disabled = true;
         btnText.innerText = 'جاري الحفظ...';
 
+        // Enable clinicMoneyInput temporarily to send its value to backend
+        clinicMoneyInput.disabled = false;
         const formData = new FormData(this);
+        clinicMoneyInput.disabled = true;
 
         fetch('{% url "appointments:create" %}', {
             method: 'POST',
@@ -254,6 +298,7 @@
                     this.reset();
                     patientSelect.clear();
                     doctorSelect.clear();
+                    clinicMoneyInput.value = '';
                     refreshTable(1, currentStatus);
                     alert(data.message);
                 } else {
@@ -304,7 +349,7 @@
             'completed': 'إتمام الكشف',
             'cancelled': 'إلغاء الموعد'
         };
-        
+
         if (!confirm(`هل أنت متأكد من ${statusMap[newStatus]}؟`)) return;
 
         fetch(`/appointments/update-status/${appointmentId}/`, {
@@ -315,18 +360,18 @@
             },
             body: `status=${newStatus}`
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                refreshTable(currentPage, currentStatus);
-            } else {
-                alert("خطأ: " + data.message);
-            }
-        })
-        .catch(err => {
-            console.error("Error updating status:", err);
-            alert("حدث خطأ أثناء تحديث الحالة.");
-        });
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    refreshTable(currentPage, currentStatus);
+                } else {
+                    alert("خطأ: " + data.message);
+                }
+            })
+            .catch(err => {
+                console.error("Error updating status:", err);
+                alert("حدث خطأ أثناء تحديث الحالة.");
+            });
     }
 
     // Initial Load

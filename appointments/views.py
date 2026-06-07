@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from .forms import AppointmentForm
 from django.http import JsonResponse, HttpResponse
 from django.core.paginator import Paginator
 from django.template.loader import render_to_string
@@ -68,17 +69,36 @@ def create_appointment(request):
             return JsonResponse({'status': 'error', 'message': 'تنسيق التاريخ غير صحيح'}, status=400)
 
         status = request.POST.get('status')
+        appointment_type = request.POST.get('type', 'examination')
         room_number = request.POST.get('room_number')
         cost = request.POST.get('cost')
+        doctor_money = request.POST.get('doctor_money')
+        clinic_money = request.POST.get('clinic_money')
         notes = request.POST.get('notes')
         
+        try:
+            cost_val = float(cost) if cost else 0.0
+            doctor_money_val = float(doctor_money) if doctor_money else 0.0
+            clinic_money_val = float(clinic_money) if clinic_money else 0.0
+        except ValueError:
+            return JsonResponse({'status': 'error', 'message': 'الرجاء إدخال قيم عددية صالحة للمبالغ المالية.'}, status=400)
+
+        if doctor_money_val < 0 or clinic_money_val < 0 or cost_val < 0:
+            return JsonResponse({'status': 'error', 'message': 'لا يمكن أن تكون القيم المالية سالبة.'}, status=400)
+
+        if abs(cost_val - (doctor_money_val + clinic_money_val)) > 0.01:
+            return JsonResponse({'status': 'error', 'message': 'يجب أن يساوي مجموع نصيب الطبيب ونصيب العيادة التكلفة الإجمالية.'}, status=400)
+
         appointment = Appointment.objects.create(
             patient_id=patient_id,
             doctor_id=doctor_id,
             date=date,
             status=status,
+            type=appointment_type,
             room_number=room_number if room_number else None,
-            cost=cost,
+            cost=cost_val,
+            doctor_money=doctor_money_val,
+            clinic_money=round(cost_val - doctor_money_val, 2),
             notes=notes,
             created_by=request.user
         )
@@ -188,3 +208,61 @@ def print_prescription(request, appointment_id):
         'prescriptions': appointment.prescription_items.all().order_by('created_at'),
     }
     return render(request, 'appointments/print_prescription.html', context)
+
+
+@login_required
+@permission_required('appointments.change_appointment', raise_exception=True)
+def update_appointment(request, pk):
+    appointment = get_object_or_404(Appointment, pk=pk)
+
+    if request.method == 'POST':
+        patient_id   = request.POST.get('patient')
+        doctor_id    = request.POST.get('doctor')
+        date_str     = request.POST.get('date')
+        status       = request.POST.get('status')
+        appointment_type = request.POST.get('type', 'examination')
+        room_number  = request.POST.get('room_number') or None
+        notes        = request.POST.get('notes', '')
+
+        date = parse_datetime(date_str)
+        if not date:
+            messages.error(request, 'تنسيق التاريخ غير صحيح.')
+            return render(request, 'appointments/update_appointment.html', {'appointment': appointment})
+
+        try:
+            cost         = float(request.POST.get('cost'))
+            doctor_money = float(request.POST.get('doctor_money'))
+            clinic_money = float(request.POST.get('clinic_money'))
+        except (TypeError, ValueError):
+            messages.error(request, 'الرجاء إدخال قيم مالية صالحة.')
+            return render(request, 'appointments/update_appointment.html', {'appointment': appointment})
+
+        if cost < 0 or doctor_money < 0 or clinic_money < 0:
+            messages.error(request, 'لا يمكن أن تكون القيم المالية سالبة.')
+            return render(request, 'appointments/update_appointment.html', {'appointment': appointment})
+
+        if abs(cost - (doctor_money + clinic_money)) > 0.01:
+            messages.error(request, 'يجب أن يساوي مجموع نصيب الطبيب ونصيب العيادة التكلفة الإجمالية.')
+            return render(request, 'appointments/update_appointment.html', {'appointment': appointment})
+
+        appointment.patient_id   = patient_id
+        appointment.doctor_id    = doctor_id
+        appointment.date         = date
+        appointment.status       = status
+        appointment.type         = appointment_type
+        appointment.room_number  = room_number
+        appointment.cost         = cost
+        appointment.doctor_money = doctor_money
+        appointment.clinic_money = clinic_money
+        appointment.notes        = notes
+        appointment.updated_by   = request.user
+        appointment.save()
+
+        messages.success(request, 'تم تعديل الموعد بنجاح.')
+        return redirect('appointments:index')
+
+    context = {
+        'page_title': f'تعديل الموعد #{appointment.session_number}',
+        'appointment': appointment,
+    }
+    return render(request, 'appointments/update_appointment.html', context)

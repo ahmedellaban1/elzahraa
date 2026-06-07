@@ -1,4 +1,5 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.utils import timezone
 from appointments.models import Appointment
@@ -12,6 +13,9 @@ from django.http import HttpResponse
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.utils import get_column_letter
+from .models import DiscountRecord, Expense
+from etc.choices import EXPENSE_CATEGORY_CHOICES
 
 @login_required
 def dashboard_router(request):
@@ -51,9 +55,16 @@ def admin_dashboard(request):
     services = ServiceRecord.objects.filter(created_at__date__range=[start_date, end_date])
     
     # Summary Statistics
-    total_app_revenue = appointments.aggregate(Sum('cost'))['cost__sum'] or 0
+    app_net_rev = appointments.aggregate(Sum('cost'))['cost__sum'] or 0
+    app_discount_sum = sum(app.discount.discount_amount for app in appointments if hasattr(app, 'discount'))
+    total_app_revenue = app_net_rev + app_discount_sum
+    
     total_service_revenue = services.aggregate(Sum('service__price'))['service__price__sum'] or 0
-    total_revenue = total_app_revenue + total_service_revenue
+    service_discount_sum = sum(ser.discount.discount_amount for ser in services if hasattr(ser, 'discount'))
+    
+    total_discounts = app_discount_sum + service_discount_sum
+    total_original_revenue = total_app_revenue + total_service_revenue
+    total_net_revenue = total_original_revenue - total_discounts
     
     # Detailed Doctor Analytics
     doctors = Doctor.objects.all()
@@ -68,25 +79,21 @@ def admin_dashboard(request):
     for doctor in doctors:
         # Appointments for this doctor
         doc_apps = appointments.filter(doctor=doctor)
-        doc_app_rev = doc_apps.aggregate(Sum('cost'))['cost__sum'] or 0
+        d_app_net = doc_apps.aggregate(Sum('cost'))['cost__sum'] or 0
+        d_app_discount = sum(app.discount.discount_amount for app in doc_apps if hasattr(app, 'discount'))
+        doc_app_rev = d_app_net + d_app_discount
         
         # Services for this doctor
         doc_services = services.filter(doctor=doctor)
         doc_service_rev = doc_services.aggregate(Sum('service__price'))['service__price__sum'] or 0
-        doc_service_share = doc_services.aggregate(Sum('doctor_amount'))['doctor_amount__sum'] or 0
+        doc_service_share = doc_services.aggregate(Sum('doctor_money'))['doctor_money__sum'] or 0
         
-        # Calculate Appointment Share
-        if doctor.examination_type == 'percentage':
-            percentage = doctor.percentage_value or 0
-            doc_app_share = doc_app_rev * (percentage / 100)
-        elif doctor.examination_type == 'time_share':
-            price = doctor.price_value or 0
-            doc_app_share = doc_apps.count() * price
-        else:
-            doc_app_share = doc_app_rev
+        doc_app_share = doc_apps.aggregate(Sum('doctor_money'))['doctor_money__sum'] or 0
+        doc_app_clinic_share = doc_apps.aggregate(Sum('clinic_money'))['clinic_money__sum'] or 0
+        doc_service_clinic_share = doc_services.aggregate(Sum('clinic_money'))['clinic_money__sum'] or 0
             
         doc_total_share = doc_app_share + doc_service_share
-        doc_clinic_share = (doc_app_rev + doc_service_rev) - doc_total_share
+        doc_clinic_share = doc_app_clinic_share + doc_service_clinic_share
         
         total_doctor_share += doc_total_share
         total_clinic_share += doc_clinic_share
@@ -114,8 +121,8 @@ def admin_dashboard(request):
     ).annotate(
         count=Count('id'),
         total_price=Sum('service__price'),
-        total_doctor_share=Sum('doctor_amount'),
-        total_clinic_share=Sum('clinic_amount')
+        total_doctor_share=Sum('doctor_money'),
+        total_clinic_share=Sum('clinic_money')
     ).order_by('-total_price')
 
     # Detailed Appointment (Consultation) Analytics
@@ -130,17 +137,26 @@ def admin_dashboard(request):
     ).annotate(
         count=Count('id'),
         total_revenue=Sum('cost'),
+        total_doctor_share=Sum('doctor_money'),
+        total_clinic_share=Sum('clinic_money'),
     ).order_by('-total_revenue')
+
+    total_expenses = Expense.objects.filter(date__range=[start_date, end_date]).aggregate(Sum('amount'))['amount__sum'] or 0
+    clinic_net_profit = total_clinic_share - total_expenses
 
     context = {
         'page_title': 'لوحة تحكم المدير',
         'start_date': start_date.strftime('%Y-%m-%d'),
         'end_date': end_date.strftime('%Y-%m-%d'),
-        'total_revenue': total_revenue,
+        'total_revenue': total_original_revenue,
+        'total_net_revenue': total_net_revenue,
+        'total_discounts': total_discounts,
         'total_app_revenue': total_app_revenue,
         'total_service_revenue': total_service_revenue,
         'total_doctor_share': total_doctor_share,
         'total_clinic_share': total_clinic_share,
+        'total_expenses': total_expenses,
+        'clinic_net_profit': clinic_net_profit,
         'app_count': appointments.count(),
         'service_count': services.count(),
         'doctor_data': doctor_data,
@@ -223,9 +239,18 @@ def export_excel(request):
         services = services.filter(doctor__examination_type=exam_type)
     
     # Calculate statistics
-    total_app_revenue = appointments.aggregate(Sum('cost'))['cost__sum'] or 0
+    app_net_rev = appointments.aggregate(Sum('cost'))['cost__sum'] or 0
+    app_discount_sum = sum(app.discount.discount_amount for app in appointments if hasattr(app, 'discount'))
+    total_app_revenue = app_net_rev + app_discount_sum
+    
     total_service_revenue = services.aggregate(Sum('service__price'))['service__price__sum'] or 0
-    total_revenue = total_app_revenue + total_service_revenue
+    service_discount_sum = sum(ser.discount.discount_amount for ser in services if hasattr(ser, 'discount'))
+    
+    total_discounts = app_discount_sum + service_discount_sum
+    total_original_revenue = total_app_revenue + total_service_revenue
+    total_net_revenue = total_original_revenue - total_discounts
+    
+    total_expenses = Expense.objects.filter(date__range=[start_date, end_date]).aggregate(Sum('amount'))['amount__sum'] or 0
     
     doctors = Doctor.objects.all()
     if exam_type != 'all':
@@ -237,23 +262,20 @@ def export_excel(request):
     
     for doctor in doctors:
         doc_apps = appointments.filter(doctor=doctor)
-        doc_app_rev = doc_apps.aggregate(Sum('cost'))['cost__sum'] or 0
+        d_app_net = doc_apps.aggregate(Sum('cost'))['cost__sum'] or 0
+        d_app_discount = sum(app.discount.discount_amount for app in doc_apps if hasattr(app, 'discount'))
+        doc_app_rev = d_app_net + d_app_discount
         
         doc_services = services.filter(doctor=doctor)
         doc_service_rev = doc_services.aggregate(Sum('service__price'))['service__price__sum'] or 0
-        doc_service_share = doc_services.aggregate(Sum('doctor_amount'))['doctor_amount__sum'] or 0
+        doc_service_share = doc_services.aggregate(Sum('doctor_money'))['doctor_money__sum'] or 0
         
-        if doctor.examination_type == 'percentage':
-            percentage = doctor.percentage_value or 0
-            doc_app_share = doc_app_rev * (percentage / 100)
-        elif doctor.examination_type == 'time_share':
-            price = doctor.price_value or 0
-            doc_app_share = doc_apps.count() * price
-        else:
-            doc_app_share = doc_app_rev
+        doc_app_share = doc_apps.aggregate(Sum('doctor_money'))['doctor_money__sum'] or 0
+        doc_app_clinic_share = doc_apps.aggregate(Sum('clinic_money'))['clinic_money__sum'] or 0
+        doc_service_clinic_share = doc_services.aggregate(Sum('clinic_money'))['clinic_money__sum'] or 0
             
         doc_total_share = doc_app_share + doc_service_share
-        doc_clinic_share = (doc_app_rev + doc_service_rev) - doc_total_share
+        doc_clinic_share = doc_app_clinic_share + doc_service_clinic_share
         
         total_doctor_share += doc_total_share
         total_clinic_share += doc_clinic_share
@@ -359,12 +381,20 @@ def export_excel(request):
     ws_sum['B9'].alignment = center_align
     ws_sum['C9'].alignment = center_align
     
+    exam_count    = appointments.filter(type='examination').count()
+    follow_up_count = appointments.filter(type='follow_up').count()
+
     summary_rows = [
         ("إجمالي الكشوفات (الاستشارات)", appointments.count(), total_app_revenue),
+        ("منها — كشف أول", exam_count, ""),
+        ("منها — متابعة", follow_up_count, ""),
         ("إجمالي الخدمات المقدمة", services.count(), total_service_revenue),
-        ("إجمالي الإيرادات الكلية", appointments.count() + services.count(), total_revenue),
+        ("إجمالي الإيرادات الكلية (قبل الخصم)", appointments.count() + services.count(), total_original_revenue),
+        ("إجمالي الخصومات", "", total_discounts),
+        ("إجمالي الإيرادات الصافية", "", total_net_revenue),
         ("إجمالي نصيب الأطباء", "", total_doctor_share),
-        ("إجمالي صافي العيادة", "", total_clinic_share),
+        ("إجمالي المصروفات", "", total_expenses),
+        ("الربح الصافي للعيادة", "", total_clinic_share - total_expenses),
     ]
     
     current_row = 10
@@ -457,7 +487,7 @@ def export_excel(request):
     ws_app = wb.create_sheet(title="تفاصيل الكشوفات")
     ws_app.sheet_view.rightToLeft = True
     
-    app_headers = ["التاريخ والوقت", "رقم الجلسة", "المريض", "الطبيب", "نوع التعاقد", "التكلفة الكلية", "نصيب الطبيب", "نصيب العيادة", "الحالة"]
+    app_headers = ["التاريخ والوقت", "رقم الجلسة", "المريض", "الطبيب", "نوع التعاقد", "نوع الموعد", "التكلفة الكلية", "الخصم", "نصيب الطبيب", "نصيب العيادة", "الحالة"]
     for col_idx, text in enumerate(app_headers, start=1):
         cell = ws_app.cell(row=1, column=col_idx, value=text)
         cell.font = header_font
@@ -470,40 +500,38 @@ def export_excel(request):
         doc_name = doc.user.get_full_name()
         
         # Share logic
-        cost = app.cost
-        if doc.examination_type == 'percentage':
-            percentage = doc.percentage_value or 0
-            doc_share = cost * (percentage / 100)
-        elif doc.examination_type == 'time_share':
-            price = doc.price_value or 0
-            doc_share = price
-        else:
-            doc_share = cost
-            
-        clinic_share = cost - doc_share
+        discount_val = app.discount.discount_amount if hasattr(app, 'discount') else 0
+        cost = app.discount.original_amount if hasattr(app, 'discount') else app.cost
+        doc_share = app.doctor_money
+        clinic_share = app.clinic_money
         
         ws_app.cell(row=row_idx, column=1, value=app.date.strftime('%Y-%m-%d %I:%M %p')).alignment = center_align
         ws_app.cell(row=row_idx, column=2, value=app.session_number).alignment = center_align
         ws_app.cell(row=row_idx, column=3, value=app.patient.user.get_full_name()).alignment = right_align
         ws_app.cell(row=row_idx, column=4, value=doc_name).alignment = right_align
         ws_app.cell(row=row_idx, column=5, value=doc.get_examination_type_display()).alignment = right_align
+        ws_app.cell(row=row_idx, column=6, value='كشف' if app.type == 'examination' else 'متابعة').alignment = center_align
         
-        cost_cell = ws_app.cell(row=row_idx, column=6, value=cost)
+        cost_cell = ws_app.cell(row=row_idx, column=7, value=cost)
         cost_cell.number_format = currency_format
         cost_cell.alignment = left_align
+
+        discount_cell = ws_app.cell(row=row_idx, column=8, value=discount_val)
+        discount_cell.number_format = currency_format
+        discount_cell.alignment = left_align
         
-        doc_cell = ws_app.cell(row=row_idx, column=7, value=doc_share)
+        doc_cell = ws_app.cell(row=row_idx, column=9, value=doc_share)
         doc_cell.number_format = currency_format
         doc_cell.alignment = left_align
         
-        clinic_cell = ws_app.cell(row=row_idx, column=8, value=clinic_share)
+        clinic_cell = ws_app.cell(row=row_idx, column=10, value=clinic_share)
         clinic_cell.number_format = currency_format
         clinic_cell.alignment = left_align
         
-        ws_app.cell(row=row_idx, column=9, value=app.get_status_display()).alignment = center_align
+        ws_app.cell(row=row_idx, column=11, value=app.get_status_display()).alignment = center_align
         
         # Styling and zebra striping
-        for col_idx in range(1, 10):
+        for col_idx in range(1, 12):
             c = ws_app.cell(row=row_idx, column=col_idx)
             c.font = normal_font
             c.border = cell_border
@@ -514,18 +542,20 @@ def export_excel(request):
     if appointments.exists():
         total_row_idx = appointments.count() + 2
         ws_app.cell(row=total_row_idx, column=1, value="الإجمالي").font = bold_font
-        ws_app.cell(row=total_row_idx, column=6, value=f"=SUM(F2:F{total_row_idx-1})").number_format = currency_format
-        ws_app.cell(row=total_row_idx, column=6).font = bold_font
         ws_app.cell(row=total_row_idx, column=7, value=f"=SUM(G2:G{total_row_idx-1})").number_format = currency_format
         ws_app.cell(row=total_row_idx, column=7).font = bold_font
         ws_app.cell(row=total_row_idx, column=8, value=f"=SUM(H2:H{total_row_idx-1})").number_format = currency_format
         ws_app.cell(row=total_row_idx, column=8).font = bold_font
+        ws_app.cell(row=total_row_idx, column=9, value=f"=SUM(I2:I{total_row_idx-1})").number_format = currency_format
+        ws_app.cell(row=total_row_idx, column=9).font = bold_font
+        ws_app.cell(row=total_row_idx, column=10, value=f"=SUM(J2:J{total_row_idx-1})").number_format = currency_format
+        ws_app.cell(row=total_row_idx, column=10).font = bold_font
         
-        for col_idx in range(1, 10):
+        for col_idx in range(1, 12):
             c = ws_app.cell(row=total_row_idx, column=col_idx)
             c.border = total_border
             c.fill = summary_fill
-            if col_idx in [1, 2, 9]:
+            if col_idx in [1, 2, 6, 11]:
                 c.alignment = center_align
             elif col_idx in [3, 4, 5]:
                 c.alignment = right_align
@@ -538,7 +568,7 @@ def export_excel(request):
     ws_ser = wb.create_sheet(title="تفاصيل الخدمات")
     ws_ser.sheet_view.rightToLeft = True
     
-    ser_headers = ["تاريخ الخدمة", "المريض", "الخدمة", "الطبيب", "السعر الإجمالي", "نصيب الطبيب", "نصيب العيادة", "بواسطة"]
+    ser_headers = ["تاريخ الخدمة", "المريض", "الخدمة", "الطبيب", "السعر الإجمالي", "الخصم", "نصيب الطبيب", "نصيب العيادة", "بواسطة"]
     for col_idx, text in enumerate(ser_headers, start=1):
         cell = ws_ser.cell(row=1, column=col_idx, value=text)
         cell.font = header_font
@@ -552,21 +582,27 @@ def export_excel(request):
         ws_ser.cell(row=row_idx, column=3, value=ser.service.name).alignment = right_align
         ws_ser.cell(row=row_idx, column=4, value=ser.doctor.user.get_full_name()).alignment = right_align
         
+        discount_val = ser.discount.discount_amount if hasattr(ser, 'discount') else 0
+
         price_cell = ws_ser.cell(row=row_idx, column=5, value=ser.service.price)
         price_cell.number_format = currency_format
         price_cell.alignment = left_align
+
+        discount_cell = ws_ser.cell(row=row_idx, column=6, value=discount_val)
+        discount_cell.number_format = currency_format
+        discount_cell.alignment = left_align
         
-        doc_cell = ws_ser.cell(row=row_idx, column=6, value=ser.doctor_amount)
+        doc_cell = ws_ser.cell(row=row_idx, column=7, value=ser.doctor_money)
         doc_cell.number_format = currency_format
         doc_cell.alignment = left_align
         
-        clinic_cell = ws_ser.cell(row=row_idx, column=7, value=ser.clinic_amount)
+        clinic_cell = ws_ser.cell(row=row_idx, column=8, value=ser.clinic_money)
         clinic_cell.number_format = currency_format
         clinic_cell.alignment = left_align
         
-        ws_ser.cell(row=row_idx, column=8, value=ser.created_by.get_full_name()).alignment = center_align
+        ws_ser.cell(row=row_idx, column=9, value=ser.created_by.get_full_name()).alignment = center_align
         
-        for col_idx in range(1, 9):
+        for col_idx in range(1, 10):
             c = ws_ser.cell(row=row_idx, column=col_idx)
             c.font = normal_font
             c.border = cell_border
@@ -582,12 +618,14 @@ def export_excel(request):
         ws_ser.cell(row=total_row_idx, column=6).font = bold_font
         ws_ser.cell(row=total_row_idx, column=7, value=f"=SUM(G2:G{total_row_idx-1})").number_format = currency_format
         ws_ser.cell(row=total_row_idx, column=7).font = bold_font
+        ws_ser.cell(row=total_row_idx, column=8, value=f"=SUM(H2:H{total_row_idx-1})").number_format = currency_format
+        ws_ser.cell(row=total_row_idx, column=8).font = bold_font
         
-        for col_idx in range(1, 9):
+        for col_idx in range(1, 10):
             c = ws_ser.cell(row=total_row_idx, column=col_idx)
             c.border = total_border
             c.fill = summary_fill
-            if col_idx in [1, 8]:
+            if col_idx in [1, 9]:
                 c.alignment = center_align
             elif col_idx in [2, 3, 4]:
                 c.alignment = right_align
@@ -600,7 +638,7 @@ def export_excel(request):
     ws_all_app = wb.create_sheet(title="كل المواعيد")
     ws_all_app.sheet_view.rightToLeft = True
     
-    all_app_headers = ["التاريخ والوقت", "رقم الجلسة", "المريض", "الطبيب", "نوع التعاقد", "التكلفة الكلية", "نصيب الطبيب", "نصيب العيادة", "حالة الموعد"]
+    all_app_headers = ["التاريخ والوقت", "رقم الجلسة", "المريض", "الطبيب", "نوع التعاقد", "نوع الموعد", "التكلفة الكلية", "الخصم", "نصيب الطبيب", "نصيب العيادة", "حالة الموعد"]
     for col_idx, text in enumerate(all_app_headers, start=1):
         cell = ws_all_app.cell(row=1, column=col_idx, value=text)
         cell.font = header_font
@@ -617,39 +655,37 @@ def export_excel(request):
         doc = app.doctor
         doc_name = doc.user.get_full_name()
         
-        cost = app.cost
-        if doc.examination_type == 'percentage':
-            percentage = doc.percentage_value or 0
-            doc_share = cost * (percentage / 100)
-        elif doc.examination_type == 'time_share':
-            price = doc.price_value or 0
-            doc_share = price
-        else:
-            doc_share = cost
-            
-        clinic_share = cost - doc_share
+        discount_val = app.discount.discount_amount if hasattr(app, 'discount') else 0
+        cost = app.discount.original_amount if hasattr(app, 'discount') else app.cost
+        doc_share = app.doctor_money
+        clinic_share = app.clinic_money
         
         ws_all_app.cell(row=row_idx, column=1, value=app.date.strftime('%Y-%m-%d %I:%M %p')).alignment = center_align
         ws_all_app.cell(row=row_idx, column=2, value=app.session_number).alignment = center_align
         ws_all_app.cell(row=row_idx, column=3, value=app.patient.user.get_full_name()).alignment = right_align
         ws_all_app.cell(row=row_idx, column=4, value=doc_name).alignment = right_align
         ws_all_app.cell(row=row_idx, column=5, value=doc.get_examination_type_display()).alignment = right_align
+        ws_all_app.cell(row=row_idx, column=6, value='كشف' if app.type == 'examination' else 'متابعة').alignment = center_align
         
-        cost_cell = ws_all_app.cell(row=row_idx, column=6, value=cost)
+        cost_cell = ws_all_app.cell(row=row_idx, column=7, value=cost)
         cost_cell.number_format = currency_format
         cost_cell.alignment = left_align
+
+        discount_cell = ws_all_app.cell(row=row_idx, column=8, value=discount_val)
+        discount_cell.number_format = currency_format
+        discount_cell.alignment = left_align
         
-        doc_cell = ws_all_app.cell(row=row_idx, column=7, value=doc_share)
+        doc_cell = ws_all_app.cell(row=row_idx, column=9, value=doc_share)
         doc_cell.number_format = currency_format
         doc_cell.alignment = left_align
         
-        clinic_cell = ws_all_app.cell(row=row_idx, column=8, value=clinic_share)
+        clinic_cell = ws_all_app.cell(row=row_idx, column=10, value=clinic_share)
         clinic_cell.number_format = currency_format
         clinic_cell.alignment = left_align
         
-        ws_all_app.cell(row=row_idx, column=9, value=app.get_status_display()).alignment = center_align
+        ws_all_app.cell(row=row_idx, column=11, value=app.get_status_display()).alignment = center_align
         
-        for col_idx in range(1, 10):
+        for col_idx in range(1, 12):
             c = ws_all_app.cell(row=row_idx, column=col_idx)
             c.font = normal_font
             c.border = cell_border
@@ -659,18 +695,20 @@ def export_excel(request):
     if all_appointments.exists():
         total_row_idx = all_appointments.count() + 2
         ws_all_app.cell(row=total_row_idx, column=1, value="الإجمالي").font = bold_font
-        ws_all_app.cell(row=total_row_idx, column=6, value=f"=SUM(F2:F{total_row_idx-1})").number_format = currency_format
-        ws_all_app.cell(row=total_row_idx, column=6).font = bold_font
         ws_all_app.cell(row=total_row_idx, column=7, value=f"=SUM(G2:G{total_row_idx-1})").number_format = currency_format
         ws_all_app.cell(row=total_row_idx, column=7).font = bold_font
         ws_all_app.cell(row=total_row_idx, column=8, value=f"=SUM(H2:H{total_row_idx-1})").number_format = currency_format
         ws_all_app.cell(row=total_row_idx, column=8).font = bold_font
+        ws_all_app.cell(row=total_row_idx, column=9, value=f"=SUM(I2:I{total_row_idx-1})").number_format = currency_format
+        ws_all_app.cell(row=total_row_idx, column=9).font = bold_font
+        ws_all_app.cell(row=total_row_idx, column=10, value=f"=SUM(J2:J{total_row_idx-1})").number_format = currency_format
+        ws_all_app.cell(row=total_row_idx, column=10).font = bold_font
         
-        for col_idx in range(1, 10):
+        for col_idx in range(1, 12):
             c = ws_all_app.cell(row=total_row_idx, column=col_idx)
             c.border = total_border
             c.fill = summary_fill
-            if col_idx in [1, 2, 9]:
+            if col_idx in [1, 2, 6, 11]:
                 c.alignment = center_align
             elif col_idx in [3, 4, 5]:
                 c.alignment = right_align
@@ -679,8 +717,216 @@ def export_excel(request):
 
     adjust_column_widths(ws_all_app)
 
+    # 5. EXPENSES SHEET
+    ws_exp = wb.create_sheet(title="المصروفات")
+    ws_exp.sheet_view.rightToLeft = True
+    
+    exp_headers = ["التاريخ", "التصنيف", "الوصف", "المبلغ", "ملاحظات", "بواسطة"]
+    for col_idx, text in enumerate(exp_headers, start=1):
+        cell = ws_exp.cell(row=1, column=col_idx, value=text)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center_align
+        cell.border = header_border
+        
+    expenses = Expense.objects.filter(date__range=[start_date, end_date]).order_by('date')
+    
+    for row_idx, exp in enumerate(expenses, start=2):
+        ws_exp.cell(row=row_idx, column=1, value=exp.date.strftime('%Y-%m-%d')).alignment = center_align
+        ws_exp.cell(row=row_idx, column=2, value=exp.get_category_display()).alignment = center_align
+        ws_exp.cell(row=row_idx, column=3, value=exp.description).alignment = right_align
+        
+        amt_cell = ws_exp.cell(row=row_idx, column=4, value=exp.amount)
+        amt_cell.number_format = currency_format
+        amt_cell.alignment = left_align
+        
+        ws_exp.cell(row=row_idx, column=5, value=exp.notes or "").alignment = right_align
+        ws_exp.cell(row=row_idx, column=6, value=exp.created_by.get_full_name()).alignment = center_align
+        
+        for col_idx in range(1, 7):
+            c = ws_exp.cell(row=row_idx, column=col_idx)
+            c.font = normal_font
+            c.border = cell_border
+            if row_idx % 2 == 1:
+                c.fill = zebra_fill
+
+    if expenses.exists():
+        total_row_idx = expenses.count() + 2
+        ws_exp.cell(row=total_row_idx, column=1, value="الإجمالي").font = bold_font
+        ws_exp.cell(row=total_row_idx, column=4, value=f"=SUM(D2:D{total_row_idx-1})").number_format = currency_format
+        ws_exp.cell(row=total_row_idx, column=4).font = bold_font
+        
+        for col_idx in range(1, 7):
+            c = ws_exp.cell(row=total_row_idx, column=col_idx)
+            c.border = total_border
+            c.fill = summary_fill
+            if col_idx in [1, 2, 6]:
+                c.alignment = center_align
+            elif col_idx in [3, 5]:
+                c.alignment = right_align
+            else:
+                c.alignment = left_align
+
+    adjust_column_widths(ws_exp)
+
     # Save to response
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="financial_report_{start_date.strftime("%Y-%m-%d")}_to_{end_date.strftime("%Y-%m-%d")}.xlsx"'
     wb.save(response)
     return response
+
+@login_required
+@permission_required('dashboard.add_discountrecord', raise_exception=True)
+def add_appointment_discount(request, pk):
+    appointment = get_object_or_404(Appointment, pk=pk)
+    
+    # Check if discount already exists
+    if hasattr(appointment, 'discount'):
+        messages.warning(request, 'يوجد خصم مسبق مسجل لهذا الموعد.')
+        return redirect('appointments:index')
+
+    if request.method == 'POST':
+        try:
+            discount_amount = float(request.POST.get('discount_amount', 0))
+            reason = request.POST.get('reason', '')
+            
+            if 0 < discount_amount <= appointment.cost:
+                final_amount = appointment.cost - discount_amount
+                
+                DiscountRecord.objects.create(
+                    discount_type='appointment',
+                    appointment=appointment,
+                    patient=appointment.patient,
+                    original_amount=appointment.cost,
+                    discount_amount=discount_amount,
+                    final_amount=final_amount,
+                    reason=reason,
+                    date=appointment.date.date(),
+                    created_by=request.user
+                )
+                
+                # Optional: Update the appointment cost if the clinic wants it reflected in the appointment record directly.
+                # Usually, we keep the original cost on the appointment and use DiscountRecord for accounting.
+                # However, since the user relies heavily on appointment.cost for the dashboard,
+                # we should probably deduct it to ensure reports match. Let's ask or just do it.
+                # Let's adjust the appointment cost directly so the dashboard reports update immediately.
+                appointment.cost = final_amount
+                # Also adjust clinic money
+                appointment.clinic_money = max(0, final_amount - appointment.doctor_money)
+                appointment.save()
+
+                messages.success(request, 'تم إضافة الخصم بنجاح.')
+                return redirect('appointments:index')
+            else:
+                messages.error(request, 'قيمة الخصم غير صالحة. يجب أن تكون أكبر من 0 وأقل من أو تساوي تكلفة الموعد.')
+        except ValueError:
+            messages.error(request, 'الرجاء إدخال أرقام صحيحة.')
+            
+    return render(request, 'dashboard/add_discount.html', {
+        'page_title': 'إضافة خصم للموعد',
+        'appointment': appointment,
+    })
+
+
+@login_required
+@permission_required('dashboard.add_discountrecord', raise_exception=True)
+def add_service_discount(request, pk):
+    service_record = get_object_or_404(ServiceRecord, pk=pk)
+    
+    if hasattr(service_record, 'discount'):
+        messages.warning(request, 'يوجد خصم مسبق مسجل لهذه الخدمة.')
+        return redirect('patients:detail', pk=service_record.patient.id)
+
+    if request.method == 'POST':
+        try:
+            discount_amount = float(request.POST.get('discount_amount', 0))
+            reason = request.POST.get('reason', '')
+            
+            # Use the record's service price as the baseline
+            original_price = service_record.service.price
+            
+            if 0 < discount_amount <= original_price:
+                final_amount = original_price - discount_amount
+                
+                DiscountRecord.objects.create(
+                    discount_type='service',
+                    service_record=service_record,
+                    patient=service_record.patient,
+                    original_amount=original_price,
+                    discount_amount=discount_amount,
+                    final_amount=final_amount,
+                    reason=reason,
+                    date=service_record.created_at.date(),
+                    created_by=request.user
+                )
+                
+                # Update the service price to reflect the new total. 
+                # Note: service_record links to `Service` model, but maybe we shouldn't change the base Service price.
+                # Actually, `ServiceRecord` doesn't store a separate `cost` field like Appointment!
+                # Wait, ServiceRecord only stores `service` foreign key, `doctor_money`, and `clinic_money`.
+                # So we can just reduce `clinic_money`.
+                service_record.clinic_money = max(0, final_amount - service_record.doctor_money)
+                service_record.save()
+
+                messages.success(request, 'تم إضافة الخصم للخدمة بنجاح.')
+                return redirect('patients:detail', pk=service_record.patient.id)
+            else:
+                messages.error(request, 'قيمة الخصم غير صالحة. يجب أن تكون أكبر من 0 وأقل من أو تساوي تكلفة الخدمة.')
+        except ValueError:
+            messages.error(request, 'الرجاء إدخال أرقام صحيحة.')
+            
+    return render(request, 'dashboard/add_discount.html', {
+        'page_title': 'إضافة خصم للخدمة',
+        'service_record': service_record,
+    })
+
+
+@login_required
+@permission_required('dashboard.view_expense', raise_exception=True)
+def manage_expenses(request):
+    expenses = Expense.objects.all()
+    
+    if request.method == 'POST':
+        if not request.user.has_perm('dashboard.add_expense'):
+            messages.error(request, 'ليس لديك صلاحية لإضافة مصروف.')
+            return redirect('dashboard:manage_expenses')
+            
+        category = request.POST.get('category')
+        description = request.POST.get('description')
+        try:
+            amount = float(request.POST.get('amount', 0))
+        except ValueError:
+            amount = 0
+            
+        date_str = request.POST.get('date')
+        notes = request.POST.get('notes', '')
+        
+        if category and description and amount > 0 and date_str:
+            Expense.objects.create(
+                category=category,
+                description=description,
+                amount=amount,
+                date=date_str,
+                notes=notes,
+                created_by=request.user
+            )
+            messages.success(request, 'تم إضافة المصروف بنجاح.')
+            return redirect('dashboard:manage_expenses')
+        else:
+            messages.error(request, 'الرجاء التأكد من إدخال كافة الحقول المطلوبة بشكل صحيح.')
+            
+    context = {
+        'page_title': 'إدارة المصروفات',
+        'expenses': expenses,
+        'categories': EXPENSE_CATEGORY_CHOICES,
+    }
+    return render(request, 'dashboard/manage_expenses.html', context)
+
+@login_required
+@permission_required('dashboard.delete_expense', raise_exception=True)
+def delete_expense(request, pk):
+    expense = get_object_or_404(Expense, pk=pk)
+    if request.method == 'POST':
+        expense.delete()
+        messages.success(request, 'تم حذف المصروف بنجاح.')
+    return redirect('dashboard:manage_expenses')

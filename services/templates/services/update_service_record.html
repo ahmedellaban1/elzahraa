@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link href="{% static 'vendor/tom-select/css/tom-select.bootstrap5.min.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="premium-card p-4 p-md-5">
+                <h4 class="form-section-title">
+                    <i class="fa-solid fa-pen-to-square text-vibrant-green"></i>
+                    تعديل سجل تقديم الخدمة
+                </h4>
+                <p class="text-white-50 mb-4">تعديل الخدمة وتوزيع الأرباح — المريض والطبيب ثابتان.</p>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="post" id="serviceRecordForm">
+                    {% csrf_token %}
+
+                    <!-- Hidden fields to keep patient/doctor/service values on submit -->
+                    <input type="hidden" name="patient"  value="{{ record.patient.id }}">
+                    <input type="hidden" name="doctor"   value="{{ record.doctor.id }}">
+                    <input type="hidden" name="service"  id="serviceHidden" value="{{ record.service.id }}">
+
+                    <div class="row g-3">
+
+                        <!-- Patient — disabled display only -->
+                        <div class="col-md-6">
+                            <label class="form-label text-white-50">المريض</label>
+                            <input type="text" class="form-control"
+                                   value="{{ record.patient.user.get_full_name }}"
+                                   disabled
+                                   style="background: rgba(255,255,255,0.04) !important; color: rgba(255,255,255,0.5) !important; cursor: not-allowed; border-color: rgba(255,255,255,0.06);">
+                        </div>
+
+                        <!-- Doctor — disabled display only -->
+                        <div class="col-md-6">
+                            <label class="form-label text-white-50">الطبيب</label>
+                            <input type="text" class="form-control"
+                                   value="{{ record.doctor.user.get_full_name }}"
+                                   disabled
+                                   style="background: rgba(255,255,255,0.04) !important; color: rgba(255,255,255,0.5) !important; cursor: not-allowed; border-color: rgba(255,255,255,0.06);">
+                        </div>
+
+                        <!-- Service — AJAX TomSelect search -->
+                        <div class="col-md-12">
+                            <label class="form-label">الخدمة</label>
+                            <select id="serviceSelect" placeholder="ابحث عن خدمة..."></select>
+                        </div>
+
+                        <!-- Service price (auto-filled, read-only) -->
+                        <div class="col-md-4">
+                            <label class="form-label text-white-50">سعر الخدمة (ج.م)</label>
+                            <input type="text" class="form-control" id="servicePrice" readonly
+                                   style="background: rgba(12,55,32,0.2) !important; color: white !important; opacity: 1; cursor: not-allowed; border-color: rgba(255,255,255,0.08);">
+                        </div>
+
+                        <!-- Doctor money -->
+                        <div class="col-md-4">
+                            <label class="form-label text-white-50">نصيب الطبيب (ج.م)</label>
+                            <input type="number" step="0.01" class="form-control"
+                                   id="doctorMoneyInput" name="doctor_money"
+                                   value="{{ record.doctor_money }}"
+                                   placeholder="0.00" required>
+                        </div>
+
+                        <!-- Clinic money (auto-calculated) -->
+                        <div class="col-md-4">
+                            <label class="form-label text-white-50">نصيب العيادة (ج.م)</label>
+                            <input type="number" step="0.01" class="form-control"
+                                   id="clinicMoneyInput" name="clinic_money"
+                                   value="{{ record.clinic_money }}"
+                                   placeholder="0.00" readonly
+                                   style="background: rgba(12,55,32,0.2) !important; color: var(--vibrant-green, #4ade80) !important; opacity: 1; cursor: not-allowed; border-color: rgba(255,255,255,0.08);">
+                        </div>
+
+                    </div>
+
+                    <div class="d-grid gap-2 mt-5">
+                        <button type="submit" class="btn btn-premium py-3 fs-5" id="submitBtn">
+                            <i class="fa-solid fa-save ms-2"></i> حفظ التعديلات
+                        </button>
+                        <a href="{% url 'patients:detail' record.patient.id %}" class="btn btn-outline-light py-2">إلغاء</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/tom-select/js/tom-select.complete.min.js' %}"></script>
+<script>
+    // ── Service AJAX TomSelect ─────────────────────────────────────────────
+    let servicesData = {};
+
+    const serviceSelect = new TomSelect("#serviceSelect", {
+        valueField: 'id',
+        labelField: 'name',
+        searchField: 'name',
+        load: function (query, callback) {
+            if (!query.length) return callback();
+            fetch(`/services/get-services/?q=${encodeURIComponent(query)}`)
+                .then(r => r.json())
+                .then(data => {
+                    data.forEach(s => {
+                        servicesData[String(s.id)] = { name: s.name, price: parseFloat(s.price) };
+                    });
+                    callback(data);
+                })
+                .catch(() => callback());
+        },
+        render: {
+            option: function (item, escape) {
+                const price = parseFloat(item.price) || 0;
+                return `<div><span class="fw-bold">${escape(item.name)}</span> <small class="text-muted">${price.toFixed(2)} ج.م</small></div>`;
+            },
+            item: function (item, escape) {
+                const price = parseFloat(item.price) || 0;
+                return `<div>${escape(item.name)} — ${price.toFixed(2)} ج.م</div>`;
+            }
+        },
+        onChange: function (value) {
+            const serviceHidden    = document.getElementById('serviceHidden');
+            const servicePriceInput = document.getElementById('servicePrice');
+
+            if (value && servicesData[String(value)]) {
+                const price = servicesData[String(value)].price;
+                servicePriceInput.value = price.toFixed(2) + ' ج.م';
+                serviceHidden.value = value;
+                // Clear money fields so user enters fresh values for new service
+                document.getElementById('doctorMoneyInput').value = '';
+                document.getElementById('clinicMoneyInput').value = '';
+            } else {
+                servicePriceInput.value = '';
+                serviceHidden.value = '';
+            }
+        }
+    });
+
+    // Pre-populate current service
+    {% if record.service %}
+    servicesData["{{ record.service.id }}"] = {
+        name: "{{ record.service.name }}",
+        price: parseFloat("{{ record.service.price }}")
+    };
+    serviceSelect.addOption({
+        id:    "{{ record.service.id }}",
+        name:  "{{ record.service.name }}",
+        price: parseFloat("{{ record.service.price }}")
+    });
+    serviceSelect.setValue("{{ record.service.id }}", true); // silent — don't fire onChange
+    document.getElementById('servicePrice').value = parseFloat("{{ record.service.price }}").toFixed(2) + ' ج.م';
+    {% endif %}
+
+    // ── Auto-calculate clinic money ────────────────────────────────────────
+    const doctorMoneyInput = document.getElementById('doctorMoneyInput');
+    const clinicMoneyInput = document.getElementById('clinicMoneyInput');
+
+    function calcClinicMoney() {
+        if (doctorMoneyInput.value.trim() === '') {
+            clinicMoneyInput.value = '';
+            return;
+        }
+        const selectedVal = serviceSelect.getValue();
+        const price = selectedVal && servicesData[String(selectedVal)]
+            ? parseFloat(servicesData[String(selectedVal)].price) : 0;
+        const doctorMoney = parseFloat(doctorMoneyInput.value) || 0;
+        clinicMoneyInput.value = Math.max(0, price - doctorMoney).toFixed(2);
+    }
+
+    doctorMoneyInput.addEventListener('input', calcClinicMoney);
+
+    // Enable readonly clinic_money before submit so it gets POSTed
+    document.getElementById('serviceRecordForm').addEventListener('submit', function () {
+        clinicMoneyInput.removeAttribute('readonly');
+    });
+</script>
+{% endblock %}

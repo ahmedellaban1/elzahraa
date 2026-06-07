@@ -40,9 +40,24 @@
                         <span class="text-muted small">السعر:</span>
                         <span class="fw-bold text-vibrant-green fs-5">{{ service.price|floatformat:2 }} <small class="fs-6">ج.م</small></span>
                     </div>
-                    <a href="{% url 'services:detail' service.pk %}" class="btn btn-outline-premium w-100 btn-sm">
+                    <a href="{% url 'services:detail' service.pk %}" class="btn btn-outline-premium w-100 btn-sm mb-2">
                         عرض التفاصيل <i class="fa-solid fa-arrow-left ms-2"></i>
                     </a>
+                    {% if user.role == 'admin' %}
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'services:update_service' service.pk %}" class="btn btn-sm btn-outline-light w-50">
+                            <i class="fa-solid fa-pen-to-square me-1"></i> تعديل
+                        </a>
+                        <form method="post" action="{% url 'services:delete_service' service.pk %}"
+                              onsubmit="return confirm('هل أنت متأكد من حذف خدمة \'{{ service.name }}\'؟ لا يمكن التراجع.');"
+                              class="w-50">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-danger w-100">
+                                <i class="fa-solid fa-trash me-1"></i> حذف
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

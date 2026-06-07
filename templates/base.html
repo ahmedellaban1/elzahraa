@@ -32,10 +32,20 @@
                     {% if user.is_authenticated and user.role == 'admin' %}
                         <li class="nav-item"><a class="nav-link text-vibrant-green fw-bold" href="{% url 'dashboard:admin_dashboard' %}">لوحة التحكم</a></li>
                         <li class="nav-item"><a class="nav-link text-info fw-bold" href="{% url 'dashboard:unified_search' %}">البحث</a></li>
+                        <li class="nav-item ms-1">
+                            <a class="btn btn-sm btn-premium px-3" href="{% url 'appointments:index' %}">
+                                <i class="fa-solid fa-calendar-plus me-1"></i> موعد جديد
+                            </a>
+                        </li>
                     {% endif %}
                     {% if user.is_authenticated and user.role == 'receptionist' %}
                         <li class="nav-item"><a class="nav-link text-vibrant-green fw-bold" href="{% url 'patients:create_patient' %}">إضافة مريض</a></li>
                         <li class="nav-item"><a class="nav-link text-info fw-bold" href="{% url 'dashboard:unified_search' %}">البحث</a></li>
+                        <li class="nav-item ms-1">
+                            <a class="btn btn-sm btn-premium px-3" href="{% url 'appointments:index' %}">
+                                <i class="fa-solid fa-calendar-plus me-1"></i> موعد جديد
+                            </a>
+                        </li>
                     {% endif %}
                     {% if user.is_authenticated and user.role == 'doctor' %}
                         <li class="nav-item"><a class="nav-link text-vibrant-green fw-bold" href="{% url 'staff:doctor_dashboard' %}">لوحة التحكم</a></li>

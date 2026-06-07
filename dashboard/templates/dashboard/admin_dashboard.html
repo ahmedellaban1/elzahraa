@@ -57,6 +57,9 @@
                 <a href="{% url 'medicines:list_medicines' %}" class="btn btn-outline-info btn-sm px-4">
                     <i class="fa-solid fa-pills me-1"></i> إدارة الأدوية
                 </a>
+                <a href="{% url 'dashboard:manage_expenses' %}" class="btn btn-outline-danger btn-sm px-4">
+                    <i class="fa-solid fa-money-bill-transfer me-1"></i> إدارة المصروفات
+                </a>
             </div>
         </div>
     </div>
@@ -75,16 +78,36 @@
 
     <!-- Stats Grid -->
     <div class="row g-4 mb-5">
-        <!-- Row 1 -->
+        <!-- Row 1: Finances -->
         <div class="col-md-4">
-            <div class="stats-card text-center">
-                <div class="stats-icon icon-revenue mx-auto">
+            <div class="stats-card text-center" style="background: rgba(14, 165, 233, 0.05); border: 1px solid rgba(14, 165, 233, 0.2);">
+                <div class="stats-icon mx-auto" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;">
                     <i class="fa-solid fa-coins"></i>
                 </div>
-                <h6 class="text-muted small text-uppercase">إجمالي الإيرادات</h6>
+                <h6 class="text-muted small text-uppercase">الإيرادات الكلية (قبل الخصم)</h6>
                 <h3 class="fw-bold text-white mb-0">{{ total_revenue|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
             </div>
         </div>
+        <div class="col-md-4">
+            <div class="stats-card text-center" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2);">
+                <div class="stats-icon mx-auto" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
+                    <i class="fa-solid fa-tags"></i>
+                </div>
+                <h6 class="text-muted small text-uppercase">إجمالي الخصومات</h6>
+                <h3 class="fw-bold text-white mb-0">{{ total_discounts|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card text-center" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2);">
+                <div class="stats-icon mx-auto" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                    <i class="fa-solid fa-sack-dollar"></i>
+                </div>
+                <h6 class="text-muted small text-uppercase">الإيرادات الصافية</h6>
+                <h3 class="fw-bold text-vibrant-green mb-0">{{ total_net_revenue|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
+            </div>
+        </div>
+
+        <!-- Row 2: Categories -->
         <div class="col-md-4">
             <div class="stats-card text-center">
                 <div class="stats-icon icon-apps mx-auto">
@@ -105,26 +128,6 @@
                 <span class="badge bg-success mt-2">العدد: {{ service_count }}</span>
             </div>
         </div>
-
-        <!-- Row 2 -->
-        <div class="col-md-4">
-            <div class="stats-card text-center">
-                <div class="stats-icon icon-doctor mx-auto">
-                    <i class="fa-solid fa-user-md"></i>
-                </div>
-                <h6 class="text-muted small text-uppercase">نصيب الأطباء</h6>
-                <h3 class="fw-bold text-white mb-0 text-info">{{ total_doctor_share|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="stats-card text-center">
-                <div class="stats-icon icon-clinic mx-auto">
-                    <i class="fa-solid fa-hospital"></i>
-                </div>
-                <h6 class="text-muted small text-uppercase">صافي العيادة</h6>
-                <h3 class="fw-bold text-white mb-0 text-vibrant-green">{{ total_clinic_share|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
-            </div>
-        </div>
         <div class="col-md-4">
             <div class="stats-card text-center">
                 <div class="stats-icon icon-apps mx-auto" style="background: rgba(241, 196, 15, 0.15); color: #f1c40f;">
@@ -132,6 +135,46 @@
                 </div>
                 <h6 class="text-muted small text-uppercase">إجمالي العمليات</h6>
                 <h3 class="fw-bold text-white mb-0">{{ app_count|add:service_count }} <small class="fs-6 text-muted">عملية</small></h3>
+            </div>
+        </div>
+
+        <!-- Row 3: Shares -->
+        <div class="col-md-6">
+            <div class="stats-card text-center">
+                <div class="stats-icon icon-doctor mx-auto">
+                    <i class="fa-solid fa-user-md"></i>
+                </div>
+                <h6 class="text-muted small text-uppercase">صافي نصيب الأطباء</h6>
+                <h3 class="fw-bold text-info mb-0">{{ total_doctor_share|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="stats-card text-center">
+                <div class="stats-icon icon-clinic mx-auto">
+                    <i class="fa-solid fa-hospital"></i>
+                </div>
+                <h6 class="text-muted small text-uppercase">إجمالي نصيب العيادة</h6>
+                <h3 class="fw-bold text-vibrant-green mb-0">{{ total_clinic_share|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
+            </div>
+        </div>
+
+        <!-- Row 4: Net Profit -->
+        <div class="col-md-6">
+            <div class="stats-card text-center" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2);">
+                <div class="stats-icon mx-auto" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
+                    <i class="fa-solid fa-money-bill-transfer"></i>
+                </div>
+                <h6 class="text-muted small text-uppercase">إجمالي المصروفات</h6>
+                <h3 class="fw-bold text-white mb-0">{{ total_expenses|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="stats-card text-center" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2);">
+                <div class="stats-icon mx-auto" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                    <i class="fa-solid fa-vault"></i>
+                </div>
+                <h6 class="text-muted small text-uppercase">الربح الصافي للعيادة</h6>
+                <h3 class="fw-bold text-vibrant-green mb-0">{{ clinic_net_profit|floatformat:2 }} <small class="fs-6 text-muted">ج.م</small></h3>
             </div>
         </div>
     </div>
@@ -184,6 +227,8 @@
                         <th class="text-nowrap">نوع التعاقد</th>
                         <th class="text-nowrap">عدد الكشوفات</th>
                         <th class="text-nowrap">إجمالي الإيراد</th>
+                        <th class="text-nowrap text-info">نصيب الطبيب</th>
+                        <th class="text-nowrap text-vibrant-green">نصيب العيادة</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -193,12 +238,16 @@
                         <td>
                             {% if app.doctor__examination_type == 'percentage' %}
                                 <span class="badge bg-info opacity-75">نسبة</span>
-                            {% else %}
+                            {% elif app.doctor__examination_type == 'time_share' %}
                                 <span class="badge bg-secondary opacity-75">وقت</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark opacity-75">غير محدد</span>
                             {% endif %}
                         </td>
                         <td>{{ app.count }}</td>
                         <td class="fw-bold text-vibrant-green">{{ app.total_revenue|floatformat:2 }} ج.م</td>
+                        <td class="fw-bold text-info">{{ app.total_doctor_share|floatformat:2 }} ج.م</td>
+                        <td class="fw-bold text-vibrant-green">{{ app.total_clinic_share|floatformat:2 }} ج.م</td>
                     </tr>
                     {% empty %}
                     <tr>

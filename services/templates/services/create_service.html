@@ -5,7 +5,8 @@
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-lg-6">
-            <div class="auth-container text-start w-100" style="max-width: 100%; border: 1px solid var(--vibrant-green);">
+            <div class="auth-container text-start w-100"
+                style="max-width: 100%; border: 1px solid var(--vibrant-green);">
                 <div class="d-flex align-items-center gap-3 mb-4">
                     <div class="stats-icon icon-revenue mb-0">
                         <i class="fa-solid fa-hand-holding-dollar"></i>
@@ -14,43 +15,34 @@
                 </div>
 
                 <p class="text-white-50 mb-4">
-                    استخدم هذا النموذج لتعريف خدمة جديدة في النظام، تحديد سعرها، والنسبة المئوية المستحقة للعيادة.
+                    استخدم هذا النموذج لتعريف خدمة جديدة في النظام وتحديد سعرها. يتم تحديد نصيب الطبيب والعيادة عند
+                    إضافة الخدمة للمريض.
                 </p>
 
                 <form method="POST">
                     {% csrf_token %}
-                    
+
                     <div class="mb-4">
                         <label class="form-label text-white-50">اسم الخدمة</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="fa-solid fa-notes-medical"></i></span>
-                            <input type="text" name="name" class="form-control form-control-with-icon" 
-                                   placeholder="مثال: رسم قلب، تحليل سكر..." required>
+                            <input type="text" name="name" class="form-control form-control-with-icon"
+                                placeholder="مثال: رسم قلب، تحليل سكر..." required>
                         </div>
                     </div>
 
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label text-white-50">السعر الإجمالي</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fa-solid fa-money-bill-wave"></i></span>
-                                <input type="number" step="0.01" name="price" class="form-control form-control-with-icon" 
-                                       placeholder="0.00" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6 mt-4 mt-md-0">
-                            <label class="form-label text-white-50">نسبة العيادة (%)</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fa-solid fa-percent"></i></span>
-                                <input type="number" step="0.01" name="clinic_percentage" class="form-control form-control-with-icon" 
-                                       placeholder="0 - 100" required>
-                            </div>
+                    <div class="mb-4">
+                        <label class="form-label text-white-50">السعر الإجمالي (ج.م)</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-money-bill-wave"></i></span>
+                            <input type="number" step="0.01" name="price" class="form-control form-control-with-icon"
+                                placeholder="0.00" required>
                         </div>
                     </div>
 
-                    <div class="alert alert-warning bg-dark border-0 text-warning small mb-4">
+                    <div class="alert alert-info bg-dark border-0 text-info small mb-4">
                         <i class="fa-solid fa-circle-info me-1"></i>
-                        بناءً على النسبة المئوية المدخلة، سيتم تلقائياً حساب نصيب الطبيب من كل عملية كشف.
+                        سيتم تحديد نصيب الطبيب والعيادة بشكل يدوي عند كل إضافة للخدمة لمريض.
                     </div>
 
                     <div class="mt-5 d-flex gap-3">
@@ -66,4 +58,31 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const priceInput = document.getElementById('priceInput');
+    const doctorMoneyInput = document.getElementById('doctorMoneyInput');
+    const clinicMoneyInput = document.getElementById('clinicMoneyInput');
+    const form = document.querySelector('form');
+
+    function calculateClinicMoney() {
+        if (doctorMoneyInput.value.trim() === '') {
+            clinicMoneyInput.value = '';
+            return;
+        }
+        const price = parseFloat(priceInput.value) || 0;
+        const doctorMoney = parseFloat(doctorMoneyInput.value) || 0;
+        const clinicMoney = Math.max(0, price - doctorMoney);
+        clinicMoneyInput.value = clinicMoney.toFixed(2);
+    }
+
+    priceInput.addEventListener('input', calculateClinicMoney);
+    doctorMoneyInput.addEventListener('input', calculateClinicMoney);
+
+    form.addEventListener('submit', function () {
+        clinicMoneyInput.disabled = false;
+    });
+</script>
 {% endblock %}

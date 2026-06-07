@@ -22,6 +22,11 @@ APPOINTMENT_STATUS_CHOICES = (
     ('cancelled', 'تم الإلغاء'),
 )
 
+APPOINTMENT_TYPE_CHOICES = (
+    ('examination', 'كشف'),
+    ('follow_up', 'متابعة'),
+)
+
 CONCENTRATION_UNIT_CHOICES = (
     ('mg', 'ملجم'),
     ('mcg', 'مكجم'),
@@ -87,4 +92,19 @@ MEDICINE_NOTES = (
     ('after_lunch', 'بعد الغداء'),
     ('after_dinner', 'بعد العشاء'),
     ('after_food', 'بعد الطعام'),
+)
+
+DISCOUNT_TYPE_CHOICES = (
+    ('appointment', 'موعد'),
+    ('service', 'خدمة'),
+)
+
+EXPENSE_CATEGORY_CHOICES = (
+    ('rent', 'إيجار'),
+    ('salaries', 'رواتب'),
+    ('supplies', 'مستلزمات'),
+    ('utilities', 'مرافق'),
+    ('maintenance', 'صيانة'),
+    ('marketing', 'تسويق'),
+    ('other', 'أخرى'),
 )

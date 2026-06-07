@@ -9,7 +9,7 @@ class PrescriptionItemInline(admin.TabularInline):
 
 @admin.register(Appointment)
 class AppointmentAdmin(admin.ModelAdmin):
-    list_display = ('patient', 'doctor', 'date', 'status', 'cost')
+    list_display = ('patient', 'doctor', 'date', 'status', 'cost', 'doctor_money', 'clinic_money')
     list_filter = ('status', 'date', 'doctor')
     search_fields = ('patient__user__first_name', 'patient__user__last_name', 'doctor__user__first_name', 'notes')
     inlines = [PrescriptionItemInline]

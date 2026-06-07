@@ -2,7 +2,7 @@ from django.db import models
 from etc.choices import (
     APPOINTMENT_STATUS_CHOICES, MEDICINE_DOSAGE_UNIT_CHOICES,
     MEDICINE_FREQUENCY_CHOICES, MEDICINE_DURATION_UNIT_CHOICES, 
-    MEDICINE_ROUTE_CHOICES, MEDICINE_NOTES
+    MEDICINE_ROUTE_CHOICES, MEDICINE_NOTES, APPOINTMENT_TYPE_CHOICES
 )
 
 
@@ -13,7 +13,10 @@ class Appointment(models.Model):
     session_number = models.PositiveIntegerField(null=True, blank=True, editable=False) # Daily queue number
     room_number = models.PositiveIntegerField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=APPOINTMENT_STATUS_CHOICES, default='confirmed')
+    type = models.CharField(max_length=20, choices=APPOINTMENT_TYPE_CHOICES, default=APPOINTMENT_TYPE_CHOICES[0][0])
     cost = models.FloatField(null=False, blank=False)
+    doctor_money = models.FloatField(null=False, blank=False)
+    clinic_money = models.FloatField(null=False, blank=False)
     notes = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

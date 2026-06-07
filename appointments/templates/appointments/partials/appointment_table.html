@@ -9,6 +9,13 @@
     </td>
     <td class="text-wrap">{{ appointment.doctor }}</td>
     <td class="text-nowrap">
+        {% if appointment.type == 'examination' %}
+            <span class="badge" style="background: rgba(99,102,241,0.2); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.4); border-radius: 8px; padding: 4px 10px;">كشف</span>
+        {% else %}
+            <span class="badge" style="background: rgba(245,158,11,0.2); color: #fcd34d; border: 1px solid rgba(245,158,11,0.4); border-radius: 8px; padding: 4px 10px;">متابعة</span>
+        {% endif %}
+    </td>
+    <td class="text-nowrap">
         <span class="status-badge status-{{ appointment.status }}">
             {{ appointment.get_status_display }}
         </span>
@@ -39,6 +46,18 @@
                 onclick="updateAppointmentStatus({{ appointment.id }}, 'cancelled')">
                 <i class="fa-solid fa-ban"></i>
             </button>
+            {% endif %}
+
+            {% if user.role in 'admin,receptionist' or user.is_superuser %}
+            <a href="{% url 'appointments:update' appointment.id %}" class="btn btn-sm btn-outline-warning" title="تعديل الموعد">
+                <i class="fa-solid fa-edit"></i>
+            </a>
+            
+            {% if not appointment.discount and appointment.cost > 0 %}
+            <a href="{% url 'dashboard:add_appointment_discount' appointment.id %}" class="btn btn-sm btn-outline-light" title="إضافة خصم">
+                <i class="fa-solid fa-tags"></i>
+            </a>
+            {% endif %}
             {% endif %}
         </div>
     </td>
