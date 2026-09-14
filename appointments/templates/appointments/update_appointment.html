@@ -1,6 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<link href="{% static 'vendor/tom-select/css/tom-select.bootstrap5.min.css' %}" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">
@@ -114,15 +118,18 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
+<script src="{% static 'vendor/tom-select/js/tom-select.complete.min.js' %}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
     // Patient TomSelect — initial option already in <select> above
     new TomSelect("#patientSelect", {
         valueField: 'id',
-        labelField: 'name',
-        searchField: 'name',
+        labelField: 'full_name',
+        searchField: ['full_name', 'phone'],
         load: function (query, callback) {
             if (!query.length) return callback();
             fetch(`/patients/get-patient/?q=${encodeURIComponent(query)}`)
@@ -130,7 +137,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(data => callback(data))
                 .catch(() => callback());
         },
-        // Keep the pre-seeded option visible even with load
         shouldLoad: function(query) { return query.length >= 1; }
     });
 
@@ -149,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function () {
         shouldLoad: function(query) { return query.length >= 1; }
     });
 
-    // Auto-calculate Clinic Money
+    // Auto-calculate Clinic Money = cost - doctor share
     const costInput        = document.getElementById('costInput');
     const doctorMoneyInput = document.getElementById('doctorMoneyInput');
     const clinicMoneyInput = document.getElementById('clinicMoneyInput');
@@ -162,6 +168,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     costInput.addEventListener('input', calcClinicMoney);
     doctorMoneyInput.addEventListener('input', calcClinicMoney);
+    calcClinicMoney();
 
     // Enable readonly clinic_money on submit so it POSTs
     document.getElementById('appointmentForm').addEventListener('submit', function () {
