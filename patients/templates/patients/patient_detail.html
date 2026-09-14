@@ -27,6 +27,9 @@
             </div>
             <div class="mt-2 mt-md-0 d-flex gap-2 justify-content-start flex-wrap">
                 {% if user.role in 'admin,receptionist' or user.is_superuser %}
+                <a href="{% url 'patients:update' patient.id %}" class="btn btn-outline-warning btn-sm px-3">
+                    <i class="fa-solid fa-edit me-1"></i> تعديل البيانات
+                </a>
                 <a href="{% url 'patients:reset_password' patient.id %}" class="btn btn-outline-info btn-sm px-3"
                     onclick="return confirm('هل أنت متأكد من إعادة تعيين كلمة المرور؟ سيتم توليد كلمة مرور جديدة فوراً.')">
                     <i class="fa-solid fa-key me-1"></i> تعيين كلمة المرور

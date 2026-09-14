@@ -45,3 +45,50 @@ class PatientCreationForm(forms.ModelForm):
                 }
             )
         return user
+
+
+class PatientUpdateForm(forms.ModelForm):
+    first_name = forms.CharField(max_length=150, label="الاسم الأول", required=True)
+    last_name = forms.CharField(max_length=150, label="اسم العائلة", required=True)
+    username = forms.CharField(max_length=150, label="اسم المستخدم", required=True)
+    phone_number = forms.CharField(max_length=13, label="رقم الهاتف", required=True)
+    gender = forms.ChoiceField(choices=GENDER_CHOICES, label="الجنس", required=True)
+
+    address = forms.CharField(max_length=100, label="العنوان", required=False)
+    birth_date = forms.DateField(label="تاريخ الميلاد", required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    notes = forms.CharField(label="ملاحظات", required=False, widget=forms.Textarea(attrs={'rows': 3}))
+
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'last_name', 'phone_number', 'gender']
+
+    def __init__(self, *args, **kwargs):
+        patient = kwargs.pop('patient', None)
+        super().__init__(*args, **kwargs)
+        if patient:
+            self.fields['address'].initial = patient.address
+            self.fields['birth_date'].initial = patient.birth_date
+            self.fields['notes'].initial = patient.notes
+
+        for field in self.fields:
+            self.fields[field].widget.attrs.update({'class': 'form-control'})
+        self.fields['gender'].widget.attrs.update({'class': 'form-select'})
+        self.fields['birth_date'].widget = forms.DateInput(
+            attrs={'type': 'date', 'class': 'form-control'},
+            format='%Y-%m-%d',
+        )
+        self.fields['birth_date'].input_formats = ['%Y-%m-%d']
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        if commit:
+            user.save()
+            Patient.objects.update_or_create(
+                user=user,
+                defaults={
+                    'address': self.cleaned_data.get('address'),
+                    'birth_date': self.cleaned_data.get('birth_date'),
+                    'notes': self.cleaned_data.get('notes'),
+                }
+            )
+        return user

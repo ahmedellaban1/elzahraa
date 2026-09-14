@@ -2,7 +2,7 @@ from django.http import JsonResponse
 from django.db.models import Q
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Patient
-from .forms import PatientCreationForm
+from .forms import PatientCreationForm, PatientUpdateForm
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib import messages
 from django.db import transaction
@@ -102,6 +102,29 @@ def create_patient(request):
         'form': form,
         'page_title': 'إضافة مريض جديد'
     })
+
+
+@login_required
+@permission_required('patients.change_patient', raise_exception=True)
+def update_patient(request, pk):
+    patient = get_object_or_404(Patient, pk=pk)
+    user = patient.user
+
+    if request.method == 'POST':
+        form = PatientUpdateForm(request.POST, instance=user, patient=patient)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"تم تحديث بيانات المريض {user.get_full_name()} بنجاح.")
+            return redirect('patients:detail', pk=patient.id)
+    else:
+        form = PatientUpdateForm(instance=user, patient=patient)
+
+    return render(request, 'patients/update_patient.html', {
+        'form': form,
+        'patient': patient,
+        'page_title': f'تعديل بيانات المريض: {user.get_full_name()}',
+    })
+
 
 @login_required
 @permission_required('accounts.change_customuser', raise_exception=True)
