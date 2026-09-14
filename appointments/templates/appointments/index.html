@@ -89,12 +89,17 @@
 
     <!-- Filter Section -->
     <div class="filter-container d-flex flex-wrap align-items-center gap-3">
-        <div class="d-flex align-items-center gap-2 me-auto">
-            <a href="#" class="filter-link active" data-status="all">الكل</a>
-            <a href="#" class="filter-link" data-status="pending">قيد الانتظار</a>
-            <a href="#" class="filter-link" data-status="completed">تم الكشف</a>
-            <a href="#" class="filter-link" data-status="confirmed">تم التأكيد</a>
-            <a href="#" class="filter-link" data-status="cancelled">تم الإلغاء</a>
+        <div class="d-flex flex-column gap-2 me-auto">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <a href="#" class="filter-link status-filter-link active" data-status="all">الكل</a>
+                <a href="#" class="filter-link status-filter-link" data-status="pending">قيد الانتظار</a>
+                <a href="#" class="filter-link status-filter-link" data-status="completed">تم الكشف</a>
+                <a href="#" class="filter-link status-filter-link" data-status="confirmed">تم التأكيد</a>
+                <a href="#" class="filter-link status-filter-link" data-status="cancelled">تم الإلغاء</a>
+            </div>
+            <div id="doctorFilters" class="d-flex align-items-center gap-2 flex-wrap">
+                <a href="#" class="filter-link doctor-filter-link active" data-doctor="all">كل الأطباء</a>
+            </div>
         </div>
 
         <div class="date-filter-box d-flex align-items-center gap-2 p-2 rounded-4"
@@ -136,6 +141,7 @@
 <script src="{% static 'vendor/flatpickr/flatpickr.min.js' %}"></script>
 <script>
     let currentStatus = 'all';
+    let currentDoctor = 'all';
     let currentPage = 1;
 
     // Tom Select for Patient
@@ -174,10 +180,44 @@
         }
     });
 
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function renderDoctorFilters(doctors) {
+        const container = document.getElementById('doctorFilters');
+        const doctorIds = doctors.map(d => String(d.id));
+        const doctorWasReset = currentDoctor !== 'all' && !doctorIds.includes(String(currentDoctor));
+        if (doctorWasReset) {
+            currentDoctor = 'all';
+        }
+
+        let html = `<a href="#" class="filter-link doctor-filter-link${currentDoctor === 'all' ? ' active' : ''}" data-doctor="all">كل الأطباء</a>`;
+        doctors.forEach(doc => {
+            const isActive = String(currentDoctor) === String(doc.id) ? ' active' : '';
+            html += `<a href="#" class="filter-link doctor-filter-link${isActive}" data-doctor="${doc.id}">${escapeHtml(doc.name)}</a>`;
+        });
+        container.innerHTML = html;
+
+        container.querySelectorAll('.doctor-filter-link').forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                currentDoctor = this.dataset.doctor;
+                container.querySelectorAll('.doctor-filter-link').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+                refreshTable(1, currentStatus, currentDoctor);
+            });
+        });
+
+        return doctorWasReset;
+    }
 
     // Refresh Table AJAX
-    function refreshTable(page = 1, status = 'all') {
+    function refreshTable(page = 1, status = 'all', doctor = 'all') {
         currentStatus = status;
+        currentDoctor = doctor;
         currentPage = page;
 
         // Get the date from flatpickr in the format Django expects (YYYY-MM-DD)
@@ -187,7 +227,7 @@
         const tableBody = document.getElementById('appointmentsTableBody');
         tableBody.style.opacity = '0.5';
 
-        let url = `/appointments/list/?page=${page}&status=${status}`;
+        let url = `/appointments/list/?page=${page}&status=${status}&doctor=${doctor}`;
         if (dateFilter) {
             url += `&date=${dateFilter}`;
         }
@@ -198,11 +238,16 @@
                     window.location.href = response.url;
                     return;
                 }
-                return response.text();
+                return response.json();
             })
-            .then(html => {
-                if (!html) return;
-                tableBody.innerHTML = html;
+            .then(data => {
+                if (!data) return;
+                const doctorWasReset = renderDoctorFilters(data.doctors || []);
+                if (doctorWasReset) {
+                    refreshTable(1, currentStatus, 'all');
+                    return;
+                }
+                tableBody.innerHTML = data.html;
                 tableBody.style.opacity = '1';
                 attachPaginationEvents();
             })
@@ -217,25 +262,25 @@
         document.querySelectorAll('.page-link[data-page]').forEach(link => {
             link.addEventListener('click', function (e) {
                 e.preventDefault();
-                refreshTable(this.dataset.page, currentStatus);
+                refreshTable(this.dataset.page, currentStatus, currentDoctor);
                 window.scrollTo({ top: 500, behavior: 'smooth' });
             });
         });
     }
 
-    // Filter Events
-    document.querySelectorAll('.filter-link').forEach(link => {
+    // Status Filter Events
+    document.querySelectorAll('.status-filter-link').forEach(link => {
         link.addEventListener('click', function (e) {
             e.preventDefault();
-            document.querySelectorAll('.filter-link').forEach(l => l.classList.remove('active'));
+            document.querySelectorAll('.status-filter-link').forEach(l => l.classList.remove('active'));
             this.classList.add('active');
-            refreshTable(1, this.dataset.status);
+            refreshTable(1, this.dataset.status, currentDoctor);
         });
     });
 
     // Date Filter Event
     document.getElementById('dateSearchBtn').addEventListener('click', function () {
-        refreshTable(1, currentStatus);
+        refreshTable(1, currentStatus, currentDoctor);
     });
 
     // Initialize Flatpickr for Date Filter
@@ -299,7 +344,7 @@
                     patientSelect.clear();
                     doctorSelect.clear();
                     clinicMoneyInput.value = '';
-                    refreshTable(1, currentStatus);
+                    refreshTable(1, currentStatus, currentDoctor);
                     alert(data.message);
                 } else {
                     alert("خطأ: " + data.message);
@@ -363,7 +408,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    refreshTable(currentPage, currentStatus);
+                    refreshTable(currentPage, currentStatus, currentDoctor);
                 } else {
                     alert("خطأ: " + data.message);
                 }

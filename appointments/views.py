@@ -29,6 +29,7 @@ def index(request):
 @permission_required('appointments.view_appointment', raise_exception=True)
 def list_appointments(request):
     status = request.GET.get('status', 'all')
+    doctor = request.GET.get('doctor', 'all')
     page_number = request.GET.get('page', 1)
     date_filter = request.GET.get('date')
     
@@ -40,19 +41,40 @@ def list_appointments(request):
     else:
         target_date = timezone.now().date()
     
-    appointments = Appointment.objects.filter(date__date=target_date).order_by('session_number')
+    day_qs = Appointment.objects.filter(date__date=target_date)
+    day_doctors = (
+        day_qs.select_related('doctor__user')
+        .values('doctor_id', 'doctor__user__first_name', 'doctor__user__last_name')
+        .distinct()
+    )
+    doctors = [
+        {
+            'id': d['doctor_id'],
+            'name': f"{d['doctor__user__first_name']} {d['doctor__user__last_name']}".strip(),
+        }
+        for d in day_doctors
+    ]
+
+    appointments = day_qs.order_by('session_number')
     
     if status != 'all':
         appointments = appointments.filter(status=status)
+
+    if doctor != 'all':
+        appointments = appointments.filter(doctor_id=doctor)
     
     paginator = Paginator(appointments, 10) # 10 per page
     page_obj = paginator.get_page(page_number)
     
     html = render_to_string('appointments/partials/appointment_table.html', {
         'page_obj': page_obj,
-        'current_status': status
+        'current_status': status,
+        'current_doctor': doctor,
     }, request=request)
-    return HttpResponse(html)
+    return JsonResponse({
+        'html': html,
+        'doctors': doctors,
+    })
 
 
 @require_POST
