@@ -18,20 +18,39 @@
                     {% if appointment %}
                         <strong>المريض:</strong> {{ appointment.patient }} <br>
                         <strong>الطبيب:</strong> {{ appointment.doctor }} <br>
-                        <strong>تكلفة الموعد الحالية:</strong> <span id="currentCost">{{ appointment.cost }}</span> ج.م
+                        <strong>تكلفة الموعد الحالية:</strong> <span id="currentCost">{{ appointment.cost }}</span> ج.م<br>
+                        <strong>نصيب الطبيب:</strong> <span id="doctorShare">{{ appointment.doctor_money }}</span> ج.م<br>
+                        <strong>نصيب العيادة:</strong> <span id="clinicShare">{{ appointment.clinic_money }}</span> ج.م
                     {% else %}
                         <strong>المريض:</strong> {{ service_record.patient }} <br>
                         <strong>الطبيب:</strong> {{ service_record.doctor }} <br>
-                        <strong>تكلفة الخدمة الأساسية:</strong> <span id="currentCost">{{ service_record.service.price }}</span> ج.م
+                        <strong>تكلفة الخدمة الأساسية:</strong> <span id="currentCost">{{ service_record.service.price }}</span> ج.م<br>
+                        <strong>نصيب الطبيب:</strong> <span id="doctorShare">{{ service_record.doctor_money|default:0 }}</span> ج.م<br>
+                        <strong>نصيب العيادة:</strong> <span id="clinicShare">{{ service_record.clinic_money|default:0 }}</span> ج.م
                     {% endif %}
                 </div>
 
                 <form method="POST">
                     {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label class="form-label text-white">الخصم من</label>
+                        <div class="d-flex flex-wrap gap-3">
+                            <label class="filter-link active d-inline-flex align-items-center gap-2 mb-0" style="cursor:pointer;">
+                                <input type="radio" name="source" value="clinic" checked class="form-check-input m-0" id="sourceClinic">
+                                نصيب العيادة
+                            </label>
+                            <label class="filter-link d-inline-flex align-items-center gap-2 mb-0" style="cursor:pointer;">
+                                <input type="radio" name="source" value="doctor" class="form-check-input m-0" id="sourceDoctor">
+                                نصيب الطبيب
+                            </label>
+                        </div>
+                        <small class="text-white-50 d-block mt-2" id="sourceHint">الحد الأقصى للخصم من نصيب العيادة.</small>
+                    </div>
                     
                     <div class="mb-4">
                         <label class="form-label text-white">قيمة الخصم (ج.م)</label>
-                        <input type="number" class="form-control premium-input" name="discount_amount" id="discountAmount" required min="1" max="{% if appointment %}{{ appointment.cost }}{% else %}{{ service_record.service.price }}{% endif %}" step="0.5">
+                        <input type="number" class="form-control premium-input" name="discount_amount" id="discountAmount" required min="0.01" step="0.01">
                     </div>
                     
                     <div class="mb-4">
@@ -64,18 +83,52 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const cost = parseFloat('{% if appointment %}{{ appointment.cost }}{% else %}{{ service_record.service.price }}{% endif %}') || 0;
+        const cost = parseFloat(document.getElementById('currentCost').textContent) || 0;
+        const doctorShare = parseFloat(document.getElementById('doctorShare').textContent) || 0;
+        const clinicShare = parseFloat(document.getElementById('clinicShare').textContent) || 0;
         const discountInput = document.getElementById('discountAmount');
         const finalInput = document.getElementById('finalAmount');
+        const sourceHint = document.getElementById('sourceHint');
+        const sourceRadios = document.querySelectorAll('input[name="source"]');
+        const sourceLabels = document.querySelectorAll('label.filter-link');
 
-        discountInput.addEventListener('input', function() {
-            const discount = parseFloat(this.value) || 0;
-            if (discount >= 0 && discount <= cost) {
-                finalInput.value = (cost - discount) + ' ج.م';
+        function selectedSource() {
+            const checked = document.querySelector('input[name="source"]:checked');
+            return checked ? checked.value : 'clinic';
+        }
+
+        function maxForSource() {
+            return selectedSource() === 'doctor' ? doctorShare : clinicShare;
+        }
+
+        function updateSourceUI() {
+            const source = selectedSource();
+            const maxShare = maxForSource();
+            const label = source === 'doctor' ? 'نصيب الطبيب' : 'نصيب العيادة';
+            sourceHint.textContent = `الحد الأقصى للخصم من ${label}: ${maxShare.toFixed(2)} ج.م`;
+            discountInput.max = Math.min(cost, maxShare);
+            sourceLabels.forEach(labelEl => {
+                const radio = labelEl.querySelector('input[name="source"]');
+                labelEl.classList.toggle('active', radio && radio.checked);
+            });
+            updateFinal();
+        }
+
+        function updateFinal() {
+            const discount = parseFloat(discountInput.value) || 0;
+            const maxShare = maxForSource();
+            if (discount > 0 && discount <= cost && discount <= maxShare + 0.001) {
+                finalInput.value = (cost - discount).toFixed(2) + ' ج.م';
+            } else if (discount > maxShare) {
+                finalInput.value = 'الخصم أكبر من النصيب المختار';
             } else {
                 finalInput.value = 'قيمة الخصم غير صالحة';
             }
-        });
+        }
+
+        sourceRadios.forEach(radio => radio.addEventListener('change', updateSourceUI));
+        discountInput.addEventListener('input', updateFinal);
+        updateSourceUI();
     });
 </script>
 {% endblock %}

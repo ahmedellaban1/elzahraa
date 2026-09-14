@@ -99,6 +99,11 @@ DISCOUNT_TYPE_CHOICES = (
     ('service', 'خدمة'),
 )
 
+DISCOUNT_SOURCE_CHOICES = (
+    ('clinic', 'من نصيب العيادة'),
+    ('doctor', 'من نصيب الطبيب'),
+)
+
 EXPENSE_CATEGORY_CHOICES = (
     ('rent', 'إيجار'),
     ('salaries', 'رواتب'),

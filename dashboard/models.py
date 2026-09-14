@@ -1,10 +1,16 @@
 from django.db import models
-from etc.choices import DISCOUNT_TYPE_CHOICES, EXPENSE_CATEGORY_CHOICES
+from etc.choices import DISCOUNT_TYPE_CHOICES, DISCOUNT_SOURCE_CHOICES, EXPENSE_CATEGORY_CHOICES
 
 class DiscountRecord(models.Model):
     """Tracks discounts applied to appointments or service records."""
     discount_type = models.CharField(
         max_length=20, choices=DISCOUNT_TYPE_CHOICES,
+    )
+    # Whether the discount is taken from the doctor's share or the clinic's share
+    source = models.CharField(
+        max_length=20,
+        choices=DISCOUNT_SOURCE_CHOICES,
+        default='clinic',
     )
     # Link to either an appointment or a service record (one is set, the other is null)
     appointment = models.OneToOneField(
@@ -41,7 +47,7 @@ class DiscountRecord(models.Model):
 
     def __str__(self):
         label = self.appointment or self.service_record
-        return f'خصم {self.discount_amount} ج.م — {label}'
+        return f'خصم {self.discount_amount} ج.م ({self.get_source_display()}) — {label}'
 
     def clean(self):
         from django.core.exceptions import ValidationError

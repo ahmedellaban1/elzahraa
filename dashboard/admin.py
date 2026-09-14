@@ -4,8 +4,8 @@ from .models import DiscountRecord, Expense
 
 @admin.register(DiscountRecord)
 class DiscountRecordAdmin(admin.ModelAdmin):
-    list_display = ('date', 'discount_type', 'patient', 'original_amount', 'discount_amount', 'final_amount', 'created_by')
-    list_filter = ('discount_type', 'date')
+    list_display = ('date', 'discount_type', 'source', 'patient', 'original_amount', 'discount_amount', 'final_amount', 'created_by')
+    list_filter = ('discount_type', 'source', 'date')
     search_fields = ('patient__user__first_name', 'patient__user__last_name', 'reason')
     readonly_fields = ('created_at', 'final_amount')
     date_hierarchy = 'date'

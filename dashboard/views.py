@@ -789,12 +789,33 @@ def add_appointment_discount(request, pk):
         try:
             discount_amount = float(request.POST.get('discount_amount', 0))
             reason = request.POST.get('reason', '')
+            source = request.POST.get('source', 'clinic')
             
-            if 0 < discount_amount <= appointment.cost:
-                final_amount = appointment.cost - discount_amount
+            if source not in ('clinic', 'doctor'):
+                messages.error(request, 'مصدر الخصم غير صالح.')
+                return render(request, 'dashboard/add_discount.html', {
+                    'page_title': 'إضافة خصم للموعد',
+                    'appointment': appointment,
+                })
+
+            max_from_share = (
+                appointment.clinic_money if source == 'clinic' else appointment.doctor_money
+            ) or 0
+
+            if not (0 < discount_amount <= appointment.cost):
+                messages.error(request, 'قيمة الخصم غير صالحة. يجب أن تكون أكبر من 0 وأقل من أو تساوي تكلفة الموعد.')
+            elif discount_amount > max_from_share + 0.01:
+                share_label = 'نصيب العيادة' if source == 'clinic' else 'نصيب الطبيب'
+                messages.error(
+                    request,
+                    f'قيمة الخصم أكبر من {share_label} ({max_from_share:.2f} ج.م).'
+                )
+            else:
+                final_amount = round(appointment.cost - discount_amount, 2)
                 
                 DiscountRecord.objects.create(
                     discount_type='appointment',
+                    source=source,
                     appointment=appointment,
                     patient=appointment.patient,
                     original_amount=appointment.cost,
@@ -805,20 +826,15 @@ def add_appointment_discount(request, pk):
                     created_by=request.user
                 )
                 
-                # Optional: Update the appointment cost if the clinic wants it reflected in the appointment record directly.
-                # Usually, we keep the original cost on the appointment and use DiscountRecord for accounting.
-                # However, since the user relies heavily on appointment.cost for the dashboard,
-                # we should probably deduct it to ensure reports match. Let's ask or just do it.
-                # Let's adjust the appointment cost directly so the dashboard reports update immediately.
                 appointment.cost = final_amount
-                # Also adjust clinic money
-                appointment.clinic_money = max(0, final_amount - appointment.doctor_money)
+                if source == 'clinic':
+                    appointment.clinic_money = round(max(0, appointment.clinic_money - discount_amount), 2)
+                else:
+                    appointment.doctor_money = round(max(0, appointment.doctor_money - discount_amount), 2)
                 appointment.save()
 
                 messages.success(request, 'تم إضافة الخصم بنجاح.')
                 return redirect('appointments:index')
-            else:
-                messages.error(request, 'قيمة الخصم غير صالحة. يجب أن تكون أكبر من 0 وأقل من أو تساوي تكلفة الموعد.')
         except ValueError:
             messages.error(request, 'الرجاء إدخال أرقام صحيحة.')
             
@@ -841,15 +857,34 @@ def add_service_discount(request, pk):
         try:
             discount_amount = float(request.POST.get('discount_amount', 0))
             reason = request.POST.get('reason', '')
-            
-            # Use the record's service price as the baseline
+            source = request.POST.get('source', 'clinic')
             original_price = service_record.service.price
-            
-            if 0 < discount_amount <= original_price:
-                final_amount = original_price - discount_amount
+            doctor_money = service_record.doctor_money or 0
+            clinic_money = service_record.clinic_money or 0
+
+            if source not in ('clinic', 'doctor'):
+                messages.error(request, 'مصدر الخصم غير صالح.')
+                return render(request, 'dashboard/add_discount.html', {
+                    'page_title': 'إضافة خصم للخدمة',
+                    'service_record': service_record,
+                })
+
+            max_from_share = clinic_money if source == 'clinic' else doctor_money
+
+            if not (0 < discount_amount <= original_price):
+                messages.error(request, 'قيمة الخصم غير صالحة. يجب أن تكون أكبر من 0 وأقل من أو تساوي تكلفة الخدمة.')
+            elif discount_amount > max_from_share + 0.01:
+                share_label = 'نصيب العيادة' if source == 'clinic' else 'نصيب الطبيب'
+                messages.error(
+                    request,
+                    f'قيمة الخصم أكبر من {share_label} ({max_from_share:.2f} ج.م).'
+                )
+            else:
+                final_amount = round(original_price - discount_amount, 2)
                 
                 DiscountRecord.objects.create(
                     discount_type='service',
+                    source=source,
                     service_record=service_record,
                     patient=service_record.patient,
                     original_amount=original_price,
@@ -860,18 +895,14 @@ def add_service_discount(request, pk):
                     created_by=request.user
                 )
                 
-                # Update the service price to reflect the new total. 
-                # Note: service_record links to `Service` model, but maybe we shouldn't change the base Service price.
-                # Actually, `ServiceRecord` doesn't store a separate `cost` field like Appointment!
-                # Wait, ServiceRecord only stores `service` foreign key, `doctor_money`, and `clinic_money`.
-                # So we can just reduce `clinic_money`.
-                service_record.clinic_money = max(0, final_amount - service_record.doctor_money)
+                if source == 'clinic':
+                    service_record.clinic_money = round(max(0, clinic_money - discount_amount), 2)
+                else:
+                    service_record.doctor_money = round(max(0, doctor_money - discount_amount), 2)
                 service_record.save()
 
                 messages.success(request, 'تم إضافة الخصم للخدمة بنجاح.')
                 return redirect('patients:detail', pk=service_record.patient.id)
-            else:
-                messages.error(request, 'قيمة الخصم غير صالحة. يجب أن تكون أكبر من 0 وأقل من أو تساوي تكلفة الخدمة.')
         except ValueError:
             messages.error(request, 'الرجاء إدخال أرقام صحيحة.')
             
