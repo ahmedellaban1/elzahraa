@@ -356,6 +356,13 @@ footer {
     padding-right: 5px;
 }
 
+.footer-links-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 1rem;
+    row-gap: 0;
+}
+
 /* Auth Pages Shared Styles */
 .auth-body {
     min-height: 100vh;
@@ -1062,4 +1069,25 @@ select.form-control {
 }
 .prescription-select + .ts-wrapper .ts-dropdown .option {
     color: white !important;
+}
+/* Flash / toast messages Â fixed top, auto-dismissed via JS */
+.flash-messages {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 1.5rem;
+    right: auto;
+    top: auto;
+    transform: none;
+    z-index: 2000;
+    width: min(360px, calc(100% - 2rem));
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0.75rem;
+    pointer-events: none;
+}
+.flash-messages .flash-message {
+    pointer-events: auto;
+    margin: 0;
+    border-radius: 12px;
+    text-align: start;
 }

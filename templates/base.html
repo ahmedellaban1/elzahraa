@@ -68,9 +68,9 @@
     {% endblock %}
 
     {% if messages %}
-    <div class="container mt-3 position-absolute top-0 start-50 translate-middle-x" style="z-index: 1050;">
+    <div id="flashMessages" class="flash-messages" aria-live="polite">
         {% for message in messages %}
-            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show shadow" role="alert">
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show shadow flash-message" role="alert">
                 {{ message }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
@@ -85,41 +85,48 @@
     <!-- Footer -->
     <footer>
         <div class="container">
-            <div class="row">
-                <div class="col-lg-4 mb-4">
+            <div class="row g-4">
+                <div class="col-lg-4 mb-2">
                     <a class="footer-logo" href="/">عيادات الزهراء</a>
-                    <p class="text-white-50">نمهد الطريق في التميز الطبي. نحن نقدم خدمات رعاية صحية متميزة مع التركيز على راحة المريض والتكنولوجيا المتقدمة.</p>
-                    <div class="mt-4">
-                        <a href="#" class="text-white me-3 fs-4"><i class="fa-brands fa-facebook"></i></a>
-                        <a href="#" class="text-white me-3 fs-4"><i class="fa-brands fa-instagram"></i></a>
-                        <a href="#" class="text-white fs-4"><i class="fa-brands fa-whatsapp"></i></a>
+                    <p class="text-white-50 mt-3 mb-2">نظام إدارة العيادة</p>
+                    <a href="tel:01090470687" class="text-white-50 text-decoration-none" style="white-space: nowrap;">
+                        <i class="fa-solid fa-phone me-1"></i> 01090470687
+                    </a>
+                </div>
+
+                <div class="col-lg-4 col-md-6 footer-links">
+                    <h5 class="mb-3">روابط سريعة</h5>
+                    <div class="footer-links-grid">
+                        <a href="/">الرئيسية</a>
+                        <a href="{% url 'appointments:index' %}">المواعيد</a>
+                        <a href="{% url 'services:list' %}">الخدمات</a>
+                        <a href="{% url 'patients:create_patient' %}">إضافة مريض</a>
+                        <a href="{% url 'dashboard:unified_search' %}">البحث</a>
+                        <a href="{% url 'medicines:list_medicines' %}">الأدوية</a>
+                        <a href="{% url 'dashboard:dashboard_router' %}">لوحة التحكم</a>
+                        <a href="{% url 'accounts:profile' %}">الملف الشخصي</a>
+                        <a href="{% url 'accounts:login' %}">تسجيل الدخول</a>
+                        <a href="/admin/">لوحة الأدمن</a>
                     </div>
                 </div>
-                <div class="col-lg-2 col-md-4 mb-4 footer-links">
-                    <h5 class="mb-4">روابط سريعة</h5>
-                    <a href="#">من نحن</a>
-                    <a href="/#services">الخدمات</a>
-                    <a href="/#doctors">الأطباء</a>
-                    <a href="/#appointments">احجز الآن</a>
-                </div>
-                <div class="col-lg-2 col-md-4 mb-4 footer-links">
-                    <h5 class="mb-4">بوابة المريض</h5>
-                    <a href="{% url 'accounts:login' %}">تسجيل الدخول</a>
-                    <a href="#">إنشاء حساب</a>
-                    <a href="#">السجلات الطبية</a>
-                    <a href="#">الوصفات الطبية</a>
-                </div>
-                <div class="col-lg-4 col-md-4 mb-4">
-                    <h5 class="mb-4">معلومات الاتصال</h5>
-                    <p class="text-white-50"><i class="fa-solid fa-location-dot ms-2"></i> 123 شارع العيادات، القاهرة، مصر</p>
-                    <p class="text-white-50"><i class="fa-solid fa-phone ms-2"></i> +20 123 456 7890</p>
-                    <p class="text-white-50"><i class="fa-solid fa-envelope ms-2"></i> info@elzahraaclinics.com</p>
-                    <p class="text-white-50"><i class="fa-solid fa-clock ms-2"></i> متاح 24/7</p>
+
+                <div class="col-lg-4 col-md-6 footer-links">
+                    <h5 class="mb-3">عن المطوّر</h5>
+                    <p class="text-white-50 mb-2">Ahmed Ellaban — Full-stack developer</p>
+                    <a href="https://linkedin.com/in/ahmed-ellaban-6a37971b8/" target="_blank" rel="noopener noreferrer">
+                        <i class="fa-brands fa-linkedin me-1"></i> LinkedIn
+                    </a>
+                    <a href="https://syntaxmaestroorg-cyber.github.io/SyntaxMaestroFrontend/index.html" target="_blank" rel="noopener noreferrer">
+                        <i class="fa-solid fa-globe me-1"></i> SyntaxMaestro
+                    </a>
+                    <a href="tel:01551501534">
+                        <i class="fa-solid fa-phone me-1"></i> 01551501534
+                    </a>
                 </div>
             </div>
-            <hr class="mt-5 bg-white opacity-25">
-            <div class="text-center mt-4 text-white-50">
-                <small>&copy; 2026 عيادات الزهراء. جميع الحقوق محفوظة.</small>
+            <hr class="mt-4 bg-white opacity-25">
+            <div class="text-center mt-3 text-white-50">
+                <small>جميع حقوق الملكية محفوظة للمطوّر Ahmed Ellaban &copy; 2026</small>
             </div>
         </div>
     </footer>
@@ -142,6 +149,16 @@
                     navbar.style.boxShadow = 'none';
                 }
             }
+        });
+
+        // Auto-dismiss flash messages after a few seconds
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('#flashMessages .flash-message').forEach(function (alertEl) {
+                setTimeout(function () {
+                    const instance = bootstrap.Alert.getOrCreateInstance(alertEl);
+                    instance.close();
+                }, 4000);
+            });
         });
     </script>
     
