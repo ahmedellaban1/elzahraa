@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+
+{% block body_class %}call-display-page{% endblock %}
+{% block navbar %}{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    html,
+    body.call-display-page {
+        background: #07140f;
+        min-height: 100%;
+        overflow: hidden;
+    }
+
+    #djDebug {
+        display: none !important;
+    }
+
+    .call-screen {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        padding: 3vh 4vw 2vh;
+        background:
+            radial-gradient(circle at 50% -10%, rgba(19, 126, 64, 0.35), transparent 45%),
+            #07140f;
+        color: #f4f7f5;
+    }
+
+    .call-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .clinic-name {
+        font-size: clamp(1.6rem, 3vw, 2.6rem);
+        font-weight: 800;
+        letter-spacing: 0;
+    }
+
+    .clinic-name i {
+        color: #1db954;
+    }
+
+    .screen-tools {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .clock {
+        font-size: clamp(1.1rem, 2vw, 1.6rem);
+        color: #b7cfc2;
+        font-variant-numeric: tabular-nums;
+    }
+
+    #fullscreenBtn {
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.06);
+        color: #fff;
+        border-radius: 999px;
+        padding: 0.45rem 1rem;
+        font-size: 0.95rem;
+    }
+
+    #fullscreenBtn:hover {
+        background: rgba(19, 126, 64, 0.45);
+    }
+
+    .call-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 0;
+    }
+
+    .waiting-state {
+        text-align: center;
+    }
+
+    .waiting-state h2 {
+        font-size: clamp(2rem, 5vw, 4rem);
+        font-weight: 800;
+        margin-bottom: 0.75rem;
+    }
+
+    .waiting-state p {
+        color: #9fb5a8;
+        font-size: clamp(1.1rem, 2vw, 1.5rem);
+    }
+
+    .doctor-line {
+        text-align: center;
+        margin-bottom: 3vh;
+    }
+
+    .doctor-line .label,
+    .stat-card .label {
+        display: block;
+        color: #8fbfa4;
+        font-size: clamp(1.1rem, 2.2vw, 1.8rem);
+        font-weight: 600;
+        margin-bottom: 0.35rem;
+    }
+
+    .doctor-name {
+        font-size: clamp(2.2rem, 5vw, 4.4rem);
+        font-weight: 800;
+        line-height: 1.25;
+    }
+
+    .stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2vw;
+    }
+
+    .stat-card {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(19, 126, 64, 0.45);
+        border-radius: 28px;
+        text-align: center;
+        padding: 3vh 1vw 2vh;
+    }
+
+    .stat-card .number {
+        display: block;
+        font-size: clamp(5rem, 14vw, 11rem);
+        font-weight: 800;
+        line-height: 0.95;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .call-hint {
+        text-align: center;
+        margin-top: 3vh;
+        font-size: clamp(1.4rem, 3vw, 2.4rem);
+        font-weight: 700;
+        color: #d7ffe6;
+    }
+
+    .call-screen.is-fresh .stat-card {
+        animation: cardFlash 1.4s ease;
+    }
+
+    .call-screen.is-fresh .number,
+    .call-screen.is-fresh .doctor-name {
+        animation: popIn 0.55s cubic-bezier(.2, .8, .2, 1);
+    }
+
+    .call-screen.is-fresh .call-hint {
+        animation: hintBlink 1.1s ease-in-out 3;
+    }
+
+    @keyframes popIn {
+        0% { transform: scale(0.86); opacity: 0.35; }
+        70% { transform: scale(1.04); }
+        100% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes cardFlash {
+        0%, 100% { box-shadow: none; border-color: rgba(19, 126, 64, 0.45); }
+        35% { box-shadow: 0 0 48px rgba(29, 185, 84, 0.45); border-color: #1db954; }
+    }
+
+    @keyframes hintBlink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.35; }
+    }
+
+    @media (max-width: 700px) {
+        .stats {
+            grid-template-columns: 1fr;
+        }
+
+        .call-screen {
+            overflow: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="call-screen" id="callScreen">
+    <div class="call-top">
+        <div class="clinic-name">
+            <i class="fa-solid fa-hospital-user me-2"></i>عيادات الزهراء
+        </div>
+        <div class="screen-tools">
+            <div class="clock" id="clock"></div>
+            <button type="button" id="fullscreenBtn">ملء الشاشة</button>
+        </div>
+    </div>
+
+    <div class="call-main">
+        <div class="waiting-state" id="waitingState">
+            <h2>في انتظار النداء</h2>
+            <p>اسحب هذه النافذة إلى الشاشة الخارجية، ثم اضغط ملء الشاشة.</p>
+        </div>
+
+        <div id="callState" hidden>
+            <div class="doctor-line">
+                <span class="label">الطبيب</span>
+                <div class="doctor-name" id="doctorName">—</div>
+            </div>
+            <div class="stats">
+                <div class="stat-card">
+                    <span class="label">رقم المريض</span>
+                    <span class="number" id="patientNumber">—</span>
+                </div>
+                <div class="stat-card">
+                    <span class="label">رقم الغرفة</span>
+                    <span class="number" id="roomNumber">—</span>
+                </div>
+            </div>
+            <div class="call-hint" id="callHint">يرجى التوجه إلى الغرفة</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const CALL_STORAGE_KEY = 'elzahraaClinicCall';
+    const CALL_HEARTBEAT_KEY = 'elzahraaCallDisplayHeartbeat';
+    const CALL_CHANNEL_NAME = 'elzahraa-call';
+    let lastAt = 0;
+
+    function beat() {
+        localStorage.setItem(CALL_HEARTBEAT_KEY, String(Date.now()));
+    }
+
+    beat();
+    setInterval(beat, 2000);
+    window.addEventListener('pagehide', function () {
+        localStorage.removeItem(CALL_HEARTBEAT_KEY);
+    });
+
+    function formatDoctor(name) {
+        const clean = (name || '').trim();
+        if (!clean || clean === '—') return '—';
+        if (clean.startsWith('د') || clean.toLowerCase().startsWith('dr')) return clean;
+        return 'د. ' + clean;
+    }
+
+    function renderCall(data) {
+        if (!data || data.type === 'ping') return;
+        if (data.at && data.at === lastAt) return;
+        lastAt = data.at || Date.now();
+
+        document.getElementById('waitingState').hidden = true;
+        document.getElementById('callState').hidden = false;
+        document.getElementById('doctorName').textContent = formatDoctor(data.doctor);
+        document.getElementById('patientNumber').textContent = data.session || '—';
+        document.getElementById('roomNumber').textContent = data.room || '—';
+        document.getElementById('callHint').textContent =
+            data.room && data.room !== '—' ? 'يرجى التوجه إلى الغرفة' : 'يرجى التوجه إلى العيادة';
+
+        const screen = document.getElementById('callScreen');
+        screen.classList.remove('is-fresh');
+        void screen.offsetWidth;
+        screen.classList.add('is-fresh');
+    }
+
+    function readStoredCall() {
+        try {
+            const raw = localStorage.getItem(CALL_STORAGE_KEY);
+            if (!raw) return;
+            renderCall(JSON.parse(raw));
+        } catch (err) {
+            console.error('Could not read call display data', err);
+        }
+    }
+
+    window.addEventListener('storage', function (e) {
+        if (e.key !== CALL_STORAGE_KEY || !e.newValue) return;
+        try {
+            renderCall(JSON.parse(e.newValue));
+        } catch (err) {
+            console.error('Could not read call update', err);
+        }
+    });
+
+    if ('BroadcastChannel' in window) {
+        const channel = new BroadcastChannel(CALL_CHANNEL_NAME);
+        channel.onmessage = function (e) {
+            renderCall(e.data || {});
+        };
+    }
+
+    function tickClock() {
+        document.getElementById('clock').textContent = new Date().toLocaleTimeString('ar-EG', {
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    }
+
+    tickClock();
+    setInterval(tickClock, 1000);
+    readStoredCall();
+
+    document.getElementById('fullscreenBtn').addEventListener('click', function () {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(function () {});
+        } else {
+            document.exitFullscreen();
+        }
+    });
+</script>
+{% endblock %}

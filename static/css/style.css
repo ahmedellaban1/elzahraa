@@ -1070,7 +1070,7 @@ select.form-control {
 .prescription-select + .ts-wrapper .ts-dropdown .option {
     color: white !important;
 }
-/* Flash / toast messages Â fixed top, auto-dismissed via JS */
+/* Flash / toast messages — fixed bottom-left, auto-dismissed via JS */
 .flash-messages {
     position: fixed;
     bottom: 1.5rem;

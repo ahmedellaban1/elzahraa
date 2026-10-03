@@ -79,7 +79,7 @@
                         <div class="col-md-6">
                             <label class="form-label text-white-50">رقم الغرفة</label>
                             <input type="number" class="form-control" name="room_number"
-                                value="{{ appointment.room_number|default:'' }}" placeholder="رقم الغرفة">
+                                value="{{ appointment.room_number|default:'' }}" placeholder="رقم الغرفة" min="1" step="1" required>
                         </div>
 
                         <div class="col-md-6">

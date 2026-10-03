@@ -22,8 +22,11 @@
     </td>
     <td class="text-nowrap">
         <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-info" title="نداء المريض"
-                onclick="playVoiceSequence({{ appointment.session_number }}, {{ appointment.room_number|default:0 }})">
+            <button type="button" class="btn btn-sm btn-outline-info" title="نداء المريض"
+                data-call-patient
+                data-session="{{ appointment.session_number|default:'' }}"
+                data-room="{{ appointment.room_number|default:'' }}"
+                data-doctor="{{ appointment.doctor }}">
                 <i class="fa-solid fa-bullhorn"></i>
             </button>
             

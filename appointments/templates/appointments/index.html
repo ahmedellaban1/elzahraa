@@ -60,7 +60,7 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">رقم الغرفة</label>
-                    <input type="number" class="form-control" name="room_number" placeholder="رقم الغرفة">
+                    <input type="number" class="form-control" name="room_number" placeholder="رقم الغرفة" min="1" step="1" required>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">التكلفة (ج.م)</label>
@@ -112,6 +112,10 @@
                 <i class="fa-solid fa-search"></i>
             </button>
         </div>
+        <button type="button" id="openCallDisplayBtn" class="btn btn-outline-info rounded-4 px-3"
+            title="فتح شاشة النداء على شاشة خارجية">
+            <i class="fa-solid fa-tv me-1"></i> شاشة النداء
+        </button>
     </div>
 
     <!-- Table Section -->
@@ -336,7 +340,7 @@
         })
             .then(response => response.json())
             .then(data => {
-                submitBtn.disabled = false;
+                window.releaseFormSubmit(this);
                 btnText.innerText = 'حفظ الموعد';
 
                 if (data.status === 'success') {
@@ -345,20 +349,93 @@
                     doctorSelect.clear();
                     clinicMoneyInput.value = '';
                     refreshTable(1, currentStatus, currentDoctor);
-                    alert(data.message);
+                    showFlash(data.message, 'success');
                 } else {
-                    alert("خطأ: " + data.message);
+                    showFlash(data.message, 'danger');
                 }
             })
             .catch(err => {
-                submitBtn.disabled = false;
+                window.releaseFormSubmit(this);
                 btnText.innerText = 'حفظ الموعد';
-                alert("حدث خطأ أثناء الاتصال بالخادم.");
+                showFlash('حدث خطأ أثناء الاتصال بالخادم.', 'danger');
             });
     });
 
-    // Voice sequence player
+    const CALL_DISPLAY_URL = '{% url "appointments:call_display" %}';
+    const CALL_STORAGE_KEY = 'elzahraaClinicCall';
+    const CALL_HEARTBEAT_KEY = 'elzahraaCallDisplayHeartbeat';
+    const CALL_CHANNEL_NAME = 'elzahraa-call';
+    const CALL_WINDOW_NAME = 'elzahraaCallDisplay';
+
+    function publishCall(payload) {
+        localStorage.setItem(CALL_STORAGE_KEY, JSON.stringify(payload));
+        if ('BroadcastChannel' in window) {
+            const channel = new BroadcastChannel(CALL_CHANNEL_NAME);
+            channel.postMessage(payload);
+            channel.close();
+        }
+    }
+
+    function callDisplayIsOpen() {
+        const ts = Number(localStorage.getItem(CALL_HEARTBEAT_KEY) || 0);
+        return Date.now() - ts < 20000;
+    }
+
+    function ensureCallDisplay(forceFocus) {
+        const alreadyOpen = callDisplayIsOpen();
+        if (alreadyOpen && !forceFocus) {
+            return;
+        }
+        if (alreadyOpen && forceFocus) {
+            const existing = window.open('', CALL_WINDOW_NAME);
+            if (existing) existing.focus();
+            return;
+        }
+        const win = window.open(CALL_DISPLAY_URL, CALL_WINDOW_NAME);
+        if (!win) {
+            showFlash('المتصفح منع فتح شاشة النداء. اسمح بالنوافذ المنبثقة لهذا الموقع، ثم اضغط نداء مرة أخرى.', 'danger');
+        }
+    }
+
+    function callPatient(sessionNum, roomNum, doctorName) {
+        if (roomNum === undefined || roomNum === null || roomNum === '') {
+            showFlash('يجب إدخال رقم الغرفة قبل النداء.', 'danger');
+            return;
+        }
+        playVoiceSequence(sessionNum, roomNum);
+        publishCall({
+            session: sessionNum || '—',
+            room: String(roomNum),
+            doctor: doctorName || '—',
+            at: Date.now(),
+        });
+        ensureCallDisplay(false);
+    }
+
+    document.getElementById('appointmentsTableBody').addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-call-patient]');
+        if (!btn) return;
+        callPatient(btn.dataset.session, btn.dataset.room, btn.dataset.doctor);
+    });
+
+    document.getElementById('openCallDisplayBtn').addEventListener('click', function () {
+        ensureCallDisplay(true);
+    });
+
+    let activeCallAudio = null;
+
+    function stopVoiceSequence() {
+        if (!activeCallAudio) return;
+        activeCallAudio.onended = null;
+        activeCallAudio.pause();
+        activeCallAudio.removeAttribute('src');
+        activeCallAudio.load();
+        activeCallAudio = null;
+    }
+
     function playVoiceSequence(sessionNum, roomNum) {
+        stopVoiceSequence();
+
         const playlist = [
             `{% static 'voice/bill.mp3' %}`,
             `{% static 'voice/0.mp3' %}`,
@@ -366,25 +443,35 @@
             `{% static 'voice/00.mp3' %}`,
             `{% static 'voice/' %}${roomNum}.mp3`,
             `{% static 'voice/bill.mp3' %}`,
-
         ];
 
         let current = 0;
         const audio = new Audio();
+        activeCallAudio = audio;
+
+        function playCurrent() {
+            if (activeCallAudio !== audio) return;
+            audio.src = playlist[current];
+            audio.play().catch(e => {
+                if (activeCallAudio !== audio) return;
+                console.error("Error playing audio:", e);
+                if (current === 0) {
+                    showFlash('يرجى التفاعل مع الصفحة أولاً لتفعيل تشغيل الصوت.', 'danger');
+                }
+            });
+        }
 
         audio.onended = function () {
+            if (activeCallAudio !== audio) return;
             current++;
             if (current < playlist.length) {
-                audio.src = playlist[current];
-                audio.play().catch(e => console.error("Error playing audio:", e));
+                playCurrent();
+            } else {
+                activeCallAudio = null;
             }
         };
 
-        audio.src = playlist[0];
-        audio.play().catch(e => {
-            console.error("Error starting audio sequence:", e);
-            alert("يرجى التفاعل مع الصفحة أولاً لتفعيل تشغيل الصوت.");
-        });
+        playCurrent();
     }
 
     // Update Appointment Status AJAX
@@ -410,12 +497,12 @@
                 if (data.status === 'success') {
                     refreshTable(currentPage, currentStatus, currentDoctor);
                 } else {
-                    alert("خطأ: " + data.message);
+                    showFlash(data.message, 'danger');
                 }
             })
             .catch(err => {
                 console.error("Error updating status:", err);
-                alert("حدث خطأ أثناء تحديث الحالة.");
+                showFlash('حدث خطأ أثناء تحديث الحالة.', 'danger');
             });
     }
 

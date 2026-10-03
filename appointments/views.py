@@ -20,6 +20,18 @@ from django.utils.dateparse import parse_datetime
 
 from django.utils import timezone
 
+def parse_required_room_number(raw):
+    text = '' if raw is None else str(raw).strip()
+    if not text:
+        return None, 'يجب إدخال رقم الغرفة.'
+    try:
+        value = int(text)
+    except ValueError:
+        return None, 'رقم الغرفة يجب أن يكون رقماً صحيحاً.'
+    if value < 1:
+        return None, 'رقم الغرفة يجب أن يكون أكبر من صفر.'
+    return value, None
+
 @login_required
 @permission_required('appointments.view_appointment', raise_exception=True)
 def index(request):
@@ -77,6 +89,14 @@ def list_appointments(request):
     })
 
 
+@login_required
+@permission_required('appointments.view_appointment', raise_exception=True)
+def call_display(request):
+    return render(request, 'appointments/call_display.html', {
+        'page_title': 'شاشة النداء',
+    })
+
+
 @require_POST
 @login_required
 @permission_required('appointments.add_appointment', raise_exception=True)
@@ -92,7 +112,9 @@ def create_appointment(request):
 
         status = request.POST.get('status')
         appointment_type = request.POST.get('type', 'examination')
-        room_number = request.POST.get('room_number')
+        room_number, room_error = parse_required_room_number(request.POST.get('room_number'))
+        if room_error:
+            return JsonResponse({'status': 'error', 'message': room_error}, status=400)
         cost = request.POST.get('cost')
         doctor_money = request.POST.get('doctor_money')
         clinic_money = request.POST.get('clinic_money')
@@ -117,7 +139,7 @@ def create_appointment(request):
             date=date,
             status=status,
             type=appointment_type,
-            room_number=room_number if room_number else None,
+            room_number=room_number,
             cost=cost_val,
             doctor_money=doctor_money_val,
             clinic_money=round(cost_val - doctor_money_val, 2),
@@ -243,8 +265,14 @@ def update_appointment(request, pk):
         date_str     = request.POST.get('date')
         status       = request.POST.get('status')
         appointment_type = request.POST.get('type', 'examination')
-        room_number  = request.POST.get('room_number') or None
+        room_number, room_error = parse_required_room_number(request.POST.get('room_number'))
         notes        = request.POST.get('notes', '')
+        if room_error:
+            messages.error(request, room_error)
+            return render(request, 'appointments/update_appointment.html', {
+                'page_title': f'تعديل الموعد #{appointment.session_number}',
+                'appointment': appointment,
+            })
 
         date = parse_datetime(date_str)
         if not date:

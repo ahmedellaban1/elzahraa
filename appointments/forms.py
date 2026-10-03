@@ -9,7 +9,7 @@ class AppointmentForm(forms.ModelForm):
         fields = ['patient', 'doctor', 'date', 'room_number', 'status', 'cost', 'doctor_money', 'clinic_money', 'notes']
         widgets = {
             'date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
-            'room_number': forms.NumberInput(attrs={'class': 'form-control'}),
+            'room_number': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'step': 1, 'required': True}),
             'status': forms.Select(attrs={'class': 'form-select'}),
             'cost': forms.NumberInput(attrs={'class': 'form-control', 'id': 'costInput', 'step': '0.01'}),
             'doctor_money': forms.NumberInput(attrs={'class': 'form-control', 'id': 'doctorMoneyInput', 'step': '0.01'}),
